@@ -1,0 +1,17 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+*.log
+
+# Personal rule backups you export from the options page
+bookOfLinks.export*.jsonc
+
+# Personal rule book you edit in this repo
+bookOfLinks.jsonc
+
+# Packed extension artifacts if you ever build a .crx/.zip locally
+*.crx
+*.pem
+*.zip

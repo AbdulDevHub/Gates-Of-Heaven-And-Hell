@@ -1,0 +1,195 @@
+// background.js — MV3 service worker.
+// Responsibilities ONLY:
+//   1. Seed chrome.storage.local from bundled bookOfLinks.jsonc on first install.
+//   2. Compile stored BLOCKED/EXCLUDED rules into declarativeNetRequest dynamic rules
+//      whenever storage changes.
+//   3. Reconcile lock-expiry and removal-countdown alarms (survives worker restarts).
+//
+// All rule-editing UI logic (add/remove/lock/reflection prompts) lives in options.js,
+// which writes directly to chrome.storage.local. This file reacts to those writes.
+
+importScripts('rules-engine.js');
+
+const ALARM_LOCK_PREFIX = 'lock:';
+const ALARM_COUNTDOWN_PREFIX = 'removalCountdown:';
+const REMOVAL_COUNTDOWN_MS = 30 * 60 * 1000; // 30 minutes
+
+////////////////////////////////////////////////////////////////////////////
+// Toolbar icon -> open the rule book
+////////////////////////////////////////////////////////////////////////////
+
+chrome.action.onClicked.addListener(() => {
+  chrome.runtime.openOptionsPage();
+});
+
+////////////////////////////////////////////////////////////////////////////
+// First-install seed
+////////////////////////////////////////////////////////////////////////////
+
+chrome.runtime.onInstalled.addListener(async (details) => {
+  if (details.reason === 'install') {
+    await seedFromBundledFile();
+  }
+  await rebuildDnrRules();
+  await reconcileAllAlarms();
+});
+
+chrome.runtime.onStartup.addListener(async () => {
+  await rebuildDnrRules();
+  await reconcileAllAlarms();
+});
+
+async function seedFromBundledFile() {
+  try {
+    const url = chrome.runtime.getURL('bookOfLinks.jsonc');
+    const res = await fetch(url);
+    const raw = await res.text();
+    const parsed = parseJsonc(raw);
+
+    const blocked = (parsed.BLOCKED || []).map((rule) => makeBlockedRule(rule));
+    const excluded = (parsed.EXCLUDED || []).map((rule) => makeExcludedRule(rule));
+
+    await chrome.storage.local.set({ blocked, excluded, seeded: true });
+    console.log('[GatesOfHeavenAndHell] Seeded', blocked.length, 'blocked and', excluded.length, 'excluded rules.');
+  } catch (err) {
+    console.error('[GatesOfHeavenAndHell] Seed failed, starting empty:', err);
+    await chrome.storage.local.set({ blocked: [], excluded: [], seeded: true });
+  }
+}
+
+function makeBlockedRule([domain, substring, message] = []) {
+  return {
+    id: crypto.randomUUID(),
+    domain: domain || '',
+    substring: substring || '',
+    message: message || '',
+    locked: false,
+    lockedUntil: null,
+    pendingRemoval: null
+  };
+}
+
+function makeExcludedRule([domain, substring] = []) {
+  return {
+    id: crypto.randomUUID(),
+    domain: domain || '',
+    substring: substring || ''
+  };
+}
+
+// Minimal JSONC parser: strips // and /* */ comments and trailing commas,
+// then JSON.parse. Good enough for a hand-authored rule file.
+function parseJsonc(text) {
+  let out = text.replace(/\/\*[\s\S]*?\*\//g, '');
+  out = out.replace(/("(?:[^"\\]|\\.)*")|\/\/.*$/gm, (m, str) => (str ? str : ''));
+  out = out.replace(/,(\s*[}\]])/g, '$1');
+  return JSON.parse(out);
+}
+
+////////////////////////////////////////////////////////////////////////////
+// declarativeNetRequest compilation
+////////////////////////////////////////////////////////////////////////////
+
+async function rebuildDnrRules() {
+  const { blocked = [], excluded = [] } = await chrome.storage.local.get(['blocked', 'excluded']);
+
+  const newRules = [];
+  let nextId = 1;
+
+  // EXCLUDED first, higher priority "allow" — always wins, unconditionally.
+  for (const rule of excluded) {
+    const regexFilter = self.RulesEngine.buildRegexFilter(rule.domain, rule.substring);
+    if (!regexFilter) continue;
+    newRules.push({
+      id: nextId++,
+      priority: 2,
+      action: { type: 'allow' },
+      condition: { regexFilter, resourceTypes: ['main_frame'] }
+    });
+  }
+
+  // BLOCKED — redirect to the extension's blocked page.
+  for (const rule of blocked) {
+    const regexFilter = self.RulesEngine.buildRegexFilter(rule.domain, rule.substring);
+    if (!regexFilter) continue;
+    newRules.push({
+      id: nextId++,
+      priority: 1,
+      action: { type: 'redirect', redirect: { extensionPath: '/blocked.html' } },
+      condition: { regexFilter, resourceTypes: ['main_frame'] }
+    });
+  }
+
+  const existing = await chrome.declarativeNetRequest.getDynamicRules();
+  const removeRuleIds = existing.map((r) => r.id);
+
+  try {
+    await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds, addRules: newRules });
+  } catch (err) {
+    console.error('[GatesOfHeavenAndHell] Failed to update DNR rules:', err);
+  }
+}
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== 'local') return;
+  if (changes.blocked || changes.excluded) {
+    rebuildDnrRules();
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////
+// Alarms — lock expiry + removal countdown reconciliation
+////////////////////////////////////////////////////////////////////////////
+
+async function reconcileAllAlarms() {
+  const { blocked = [] } = await chrome.storage.local.get(['blocked']);
+  const now = Date.now();
+
+  for (const rule of blocked) {
+    if (rule.locked && rule.lockedUntil) {
+      if (rule.lockedUntil <= now) {
+        rule.locked = false;
+        rule.lockedUntil = null;
+      } else {
+        chrome.alarms.create(ALARM_LOCK_PREFIX + rule.id, { when: rule.lockedUntil });
+      }
+    }
+    if (rule.pendingRemoval && rule.pendingRemoval.stage === 'countdown') {
+      if (rule.pendingRemoval.readyAt <= now) {
+        rule.pendingRemoval.stage = 'ready';
+      } else {
+        chrome.alarms.create(ALARM_COUNTDOWN_PREFIX + rule.id, { when: rule.pendingRemoval.readyAt });
+      }
+    }
+  }
+
+  await chrome.storage.local.set({ blocked });
+}
+
+chrome.alarms.onAlarm.addListener(async (alarm) => {
+  const { blocked = [] } = await chrome.storage.local.get(['blocked']);
+  let changed = false;
+
+  if (alarm.name.startsWith(ALARM_LOCK_PREFIX)) {
+    const id = alarm.name.slice(ALARM_LOCK_PREFIX.length);
+    const rule = blocked.find((r) => r.id === id);
+    if (rule && rule.locked) {
+      rule.locked = false;
+      rule.lockedUntil = null;
+      changed = true;
+    }
+  }
+
+  if (alarm.name.startsWith(ALARM_COUNTDOWN_PREFIX)) {
+    const id = alarm.name.slice(ALARM_COUNTDOWN_PREFIX.length);
+    const rule = blocked.find((r) => r.id === id);
+    if (rule && rule.pendingRemoval && rule.pendingRemoval.stage === 'countdown') {
+      rule.pendingRemoval.stage = 'ready';
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    await chrome.storage.local.set({ blocked });
+  }
+});

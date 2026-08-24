@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Gates Of Heaven & Hell — Rule Book</title>
+<link rel="stylesheet" href="options.css" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="topbar-title">
+      <p class="eyebrow">Gates Of Heaven &amp; Hell</p>
+      <h1>Rule Book</h1>
+    </div>
+    <div class="topbar-actions">
+      <input type="file" id="importFile" accept=".json,.jsonc" hidden />
+      <button id="importBtn" class="btn btn-ghost" type="button">Import</button>
+      <button id="exportBtn" class="btn btn-ghost" type="button">Export</button>
+    </div>
+  </header>
+
+  <main class="wrap">
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Blocked</h2>
+        <p class="panel-sub">Matches close the gate. Removal requires reflection twice and a 30-minute wait — or is impossible entirely while locked.</p>
+      </div>
+
+      <form id="blockedForm" class="add-form">
+        <input type="text" id="blockedDomain" placeholder="domain, e.g. youtube.com" required />
+        <input type="text" id="blockedSubstring" placeholder="substring (optional), e.g. shorts" />
+        <input type="text" id="blockedMessage" placeholder="custom message (optional)" />
+        <button type="submit" class="btn btn-gold">Add</button>
+      </form>
+
+      <ul id="blockedList" class="rule-list"></ul>
+      <p id="blockedEmpty" class="empty-state" hidden>No blocked rules yet.</p>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Excluded</h2>
+        <p class="panel-sub">Exclusions always win over blocked rules, unconditionally. Freely editable — no friction.</p>
+      </div>
+
+      <form id="excludedForm" class="add-form">
+        <input type="text" id="excludedDomain" placeholder="domain, e.g. youtube.com" required />
+        <input type="text" id="excludedSubstring" placeholder="substring (optional), e.g. /watch" />
+        <button type="submit" class="btn btn-gold">Add</button>
+      </form>
+
+      <ul id="excludedList" class="rule-list"></ul>
+      <p id="excludedEmpty" class="empty-state" hidden>No exclusions yet.</p>
+    </section>
+
+  </main>
+
+  <!-- Reflection modal (shared, reused for both removal steps) -->
+  <div id="reflectModal" class="modal-backdrop" hidden>
+    <div class="modal">
+      <h3 id="reflectTitle">Why are you removing this rule?</h3>
+      <textarea id="reflectInput" rows="4" placeholder="Type your reason…"></textarea>
+      <div class="modal-actions">
+        <button id="reflectCancel" class="btn btn-ghost" type="button">Cancel</button>
+        <button id="reflectConfirm" class="btn btn-ember" type="button" disabled>Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="options.js"></script>
+</body>
+</html>

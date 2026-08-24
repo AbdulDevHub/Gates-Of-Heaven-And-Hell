@@ -1,0 +1,8 @@
+{
+  "[jsonc]": {
+    "editor.wordWrap": "off",
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "prettier.printWidth": 10000,
+    "prettier.trailingComma": "none"
+  }
+}

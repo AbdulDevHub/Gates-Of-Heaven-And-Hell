@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>The gate has closed</title>
+<link rel="stylesheet" href="blocked.css" />
+</head>
+<body>
+
+  <div class="stage">
+
+    <div class="gate">
+      <div class="gate-arch"></div>
+      <div class="gate-leaf left">
+        <div class="gate-ring"></div>
+        <div class="gate-grain"></div>
+      </div>
+      <div class="gate-leaf right">
+        <div class="gate-ring"></div>
+        <div class="gate-grain"></div>
+      </div>
+      <div class="gate-seam"></div>
+    </div>
+
+    <main class="content" aria-live="polite">
+      <p class="eyebrow">Gates Of Heaven &amp; Hell</p>
+      <h1 id="message" class="message"></h1>
+      <p class="sub">This path is closed. There is no way through &mdash; only away.</p>
+
+      <button id="closeTabBtn" class="close-btn" type="button">Close Tab</button>
+    </main>
+
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="assertive"></div>
+
+  <script src="blocked.js"></script>
+</body>
+</html>
