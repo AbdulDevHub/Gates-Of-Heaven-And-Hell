@@ -288,6 +288,10 @@ html, body {
   width: 100%;
 }
 
+#excludedList .edit-form {
+  grid-template-columns: 1fr 1fr auto;
+}
+
 .edit-form input {
   background: var(--ink-3);
   border: 1px solid var(--line);
@@ -315,11 +319,6 @@ html, body {
   z-index: 50;
 }
 
-/* Author-stylesheet `.modal-backdrop { display: flex }` and the browser's
-   built-in `[hidden] { display: none }` rule are equal specificity — at a
-   tie, author CSS wins over the UA stylesheet, so `modal.hidden = true`
-   was silently doing nothing and the modal rendered on every page load.
-   This compound selector has higher specificity and forces it closed. */
 .modal-backdrop[hidden] {
   display: none;
 }

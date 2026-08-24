@@ -1,7 +1,7 @@
 // rules-engine.js
-// Pure, dependency-free helpers shared by background.js (service worker)
-// and content-youtube.js (content script). No chrome.* calls in here —
-// keep this file environment-agnostic so both contexts can load it as-is.
+// Pure, dependency-free helpers shared by background.js (service worker),
+// content-youtube.js (content script), and blocked.js. No chrome.* calls in here —
+// keep this file environment-agnostic so all contexts can load it as-is.
 
 (function (root) {
   'use strict';
@@ -21,10 +21,9 @@
 
   // ---------------------------------------------------------------------
   // Plain-JS AND-matching (domain + optional substring), used client-side
-  // in the YouTube content script for a pre-navigation check. Mirrors the
-  // original Tampermonkey semantics exactly: host OR full URL must contain
-  // the domain string; if a substring is given, it must also appear
-  // anywhere in the full URL.
+  // in the YouTube content script and blocked page for matching rules.
+  // Host OR full URL must contain the domain string; if a substring is given,
+  // it must also appear anywhere in the full URL.
   // ---------------------------------------------------------------------
 
   function ruleMatches(urlParts, rule) {
@@ -63,19 +62,15 @@
     return (str || '').replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
   }
 
-  // Builds a case-insensitive RE2 pattern string (no leading/trailing
-  // slashes — DNR's regexFilter field takes the bare pattern). Anchored to
+  // Builds a case-insensitive RE2 pattern string. Anchored to
   // require an http(s) scheme so this can NEVER match a chrome-extension://
-  // URL — without this, a short/generic domain or substring can accidentally
-  // match the extension's own blocked.html redirect target (its URL contains
-  // the 32-character extension ID), causing a redirect loop that Chrome
-  // surfaces as ERR_BLOCKED_BY_CLIENT instead of the blocked page.
+  // URL. Captures the full matched URL as group 1 (\1) for regexSubstitution.
   function buildRegexFilter(domain, substring) {
     const d = escapeRegex((domain || '').toLowerCase());
     if (!d) return null;
     const s = (substring || '').trim();
     const pattern = s ? `${d}.*${escapeRegex(s.toLowerCase())}` : d;
-    return `(?i)^https?://.*${pattern}`;
+    return `(?i)^(https?://.*${pattern}.*)`;
   }
 
   const api = {

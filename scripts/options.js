@@ -18,12 +18,19 @@ let editingRuleId = null; // id of the rule currently showing its inline edit fo
 (async function init() {
   await load();
   render();
-  setInterval(render, 1000); // live countdown refresh
+  // Lightweight interval only updates countdown badge text in-place,
+  // without rebuilding the DOM or wiping active input fields.
+  setInterval(tickCountdowns, 1000);
 
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'local') return;
     if (changes.blocked || changes.excluded) {
-      load().then(render);
+      load().then(() => {
+        // If the user is currently editing a rule, avoid wiping out their active inputs
+        if (!editingRuleId) {
+          render();
+        }
+      });
     }
   });
 })();
@@ -62,7 +69,7 @@ function formatDate(ts) {
   });
 }
 
-// Mirrors background.js's lock-window logic exactly (Q7a):
+// Mirrors background.js's lock-window logic exactly:
 // Locked Mon–Thu -> unlocks Friday 18:00, staying locked through the
 // whole Fri–Sun window. Locked Fri/Sat/Sun -> flat 24h from lock time.
 function computeLockUntil(now = new Date()) {
@@ -86,6 +93,44 @@ function toast(msg) {
 }
 
 ////////////////////////////////////////////////////////////////////////////
+// Live Timer Ticker (Non-destructive)
+////////////////////////////////////////////////////////////////////////////
+
+function tickCountdowns() {
+  const now = Date.now();
+  let needsRender = false;
+
+  const countdownBadges = document.querySelectorAll('.badge-countdown[data-ready-at]');
+  countdownBadges.forEach((badge) => {
+    const readyAt = Number(badge.dataset.readyAt);
+    const remaining = readyAt - now;
+    if (remaining <= 0) {
+      needsRender = true;
+    } else {
+      badge.textContent = `⏳ Cooling off — ${formatCountdown(remaining)}`;
+    }
+  });
+
+  for (const rule of state.blocked) {
+    if (rule.locked && rule.lockedUntil && rule.lockedUntil <= now) {
+      rule.locked = false;
+      rule.lockedUntil = null;
+      needsRender = true;
+    }
+    if (rule.pendingRemoval && rule.pendingRemoval.stage === 'countdown' && rule.pendingRemoval.readyAt <= now) {
+      rule.pendingRemoval.stage = 'ready';
+      needsRender = true;
+    }
+  }
+
+  // Only re-render when a stage actually transitions (e.g. countdown reaches 0)
+  // and do not interrupt active editing
+  if (needsRender && !editingRuleId) {
+    render();
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////
 // Render
 ////////////////////////////////////////////////////////////////////////////
 
@@ -94,10 +139,6 @@ function render() {
   renderExcluded();
 }
 
-// Groups rules by lowercased domain, preserving first-seen casing for
-// display. Sorted alphabetically. Domains with only one rule are returned
-// alongside the rest — the caller decides whether to wrap them in a
-// collapsible group (we only bother when there's more than one entry).
 function groupByDomain(rules) {
   const map = new Map();
   for (const r of rules) {
@@ -113,9 +154,6 @@ function renderBlocked() {
   const empty = document.getElementById('blockedEmpty');
   const now = Date.now();
 
-  // The whole list gets rebuilt every second for the countdown badges —
-  // capture which domain groups were expanded first so re-rendering
-  // doesn't snap them shut on you.
   const openBefore = new Set();
   list.querySelectorAll('details.domain-group[open]').forEach((d) => openBefore.add(d.dataset.domain));
 
@@ -152,6 +190,7 @@ function buildBlockedRow(rule, now, nested) {
 
   if (editingRuleId === rule.id) {
     li.innerHTML = buildEditForm(rule, 'blocked');
+    attachEditEvents(li, rule.id, 'blocked');
     return li;
   }
 
@@ -161,10 +200,10 @@ function buildBlockedRow(rule, now, nested) {
 
   if (isLocked) {
     metaHtml = `<span class="badge badge-locked">🔒 Locked until ${formatDate(rule.lockedUntil)}</span>`;
-    actionsHtml = ``; // no controls at all — hard lock, no bypass, no edit either
+    actionsHtml = ``; // no controls at all — hard lock, no bypass
   } else if (pr && pr.stage === 'countdown') {
     const remaining = pr.readyAt - now;
-    metaHtml = `<span class="badge badge-countdown">⏳ Cooling off — ${formatCountdown(remaining)}</span>`;
+    metaHtml = `<span class="badge badge-countdown" data-ready-at="${pr.readyAt}">⏳ Cooling off — ${formatCountdown(remaining)}</span>`;
     actionsHtml = `<button class="btn btn-ghost btn-small" data-action="cancel-removal" data-id="${rule.id}">Cancel</button>`;
   } else if (pr && pr.stage === 'ready') {
     metaHtml = `<span class="badge badge-ready">✅ Ready — reflect once more to finish</span>`;
@@ -236,6 +275,7 @@ function buildExcludedRow(rule, nested) {
 
   if (editingRuleId === rule.id) {
     li.innerHTML = buildEditForm(rule, 'excluded');
+    attachEditEvents(li, rule.id, 'excluded');
     return li;
   }
 
@@ -272,6 +312,29 @@ function buildEditForm(rule, type) {
       </div>
     </div>
   `;
+}
+
+function attachEditEvents(li, id, type) {
+  requestAnimationFrame(() => {
+    const domainInput = li.querySelector('.edit-domain');
+    if (domainInput) {
+      domainInput.focus();
+      domainInput.select();
+    }
+  });
+
+  li.querySelectorAll('input').forEach((input) => {
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        saveEdit(li, id, type);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        editingRuleId = null;
+        render();
+      }
+    });
+  });
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -342,7 +405,9 @@ document.getElementById('excludedList').addEventListener('click', async (e) => {
 });
 
 async function saveEdit(li, id, type) {
-  const domain = li.querySelector('.edit-domain').value.trim();
+  const domainInput = li.querySelector('.edit-domain');
+  if (!domainInput) return;
+  const domain = domainInput.value.trim();
   if (!domain) { toast('Domain can\u2019t be empty.'); return; }
   const substring = li.querySelector('.edit-substring').value.trim();
   const msgInput = li.querySelector('.edit-message');

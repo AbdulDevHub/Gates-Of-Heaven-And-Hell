@@ -1,11 +1,6 @@
 // content-youtube.js
-// The only job left for a content script: catch the YouTube search form
-// BEFORE it navigates, so a blocked query jumps straight to blocked.html
-// instead of flashing the /results page first (declarativeNetRequest would
-// still catch the navigation, but only after it starts). Everything else
-// the original Tampermonkey script did (click interception, 50ms polling,
-// history patching) is redundant now that DNR blocks at the network layer
-// regardless of how navigation is triggered — dropped entirely.
+// Catches the YouTube search form BEFORE it navigates, so a blocked query
+// jumps straight to blocked.html instead of flashing the /results page first.
 
 document.addEventListener('submit', async (e) => {
   const form = e.target;
@@ -31,6 +26,10 @@ document.addEventListener('submit', async (e) => {
   if (isBlocked) {
     e.preventDefault();
     e.stopImmediatePropagation();
-    location.href = chrome.runtime.getURL('blocked.html');
+
+    const parts = self.RulesEngine.getUrlParts(url);
+    const matchingRule = blocked.find((r) => self.RulesEngine.ruleMatches(parts, [r.domain, r.substring]));
+    const ruleParam = matchingRule ? `&ruleId=${encodeURIComponent(matchingRule.id)}` : '';
+    location.href = chrome.runtime.getURL(`pages/blocked.html?url=${encodeURIComponent(url)}${ruleParam}`);
   }
 }, true);

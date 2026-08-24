@@ -3,6 +3,7 @@
   "name": "Gates Of Heaven & Hell",
   "version": "1.0.0",
   "description": "A rule-based site blocker with no bypass, delayed & reflection-gated rule removal, and lockable rules.",
+  "incognito": "split",
   "permissions": [
     "storage",
     "alarms",
@@ -13,10 +14,10 @@
     "<all_urls>"
   ],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "scripts/background.js"
   },
   "options_ui": {
-    "page": "options.html",
+    "page": "pages/options.html",
     "open_in_tab": true
   },
   "action": {
@@ -37,14 +38,19 @@
   "content_scripts": [
     {
       "matches": ["*://*.youtube.com/*"],
-      "js": ["rules-engine.js", "content-youtube.js"],
+      "js": ["scripts/rules-engine.js", "scripts/content-youtube.js"],
       "run_at": "document_start",
       "all_frames": false
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["blocked.html", "blocked.css", "blocked.js"],
+      "resources": [
+        "pages/blocked.html",
+        "styles/blocked.css",
+        "scripts/blocked.js",
+        "scripts/rules-engine.js"
+      ],
       "matches": ["<all_urls>"]
     }
   ]

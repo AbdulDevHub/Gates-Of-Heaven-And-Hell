@@ -1,6 +1,6 @@
 // blocked.js — runs on the extension-hosted blocked.html page.
 // This is an extension page (chrome-extension:// origin), so it has direct
-// access to chrome.tabs — no messaging to the background worker needed.
+// access to chrome.tabs and chrome.storage.
 
 const MESSAGES = [
   "🕌 Remember Allah in your time.",
@@ -40,7 +40,38 @@ function pick(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-document.getElementById('message').textContent = pick(MESSAGES);
+// Resolve custom rule message vs. generic fallback message
+(async function initBlockedMessage() {
+  const messageEl = document.getElementById('message');
+  const params = new URLSearchParams(location.search);
+  const ruleId = params.get('ruleId');
+  const targetUrl = params.get('url');
+
+  let customMessage = null;
+
+  try {
+    const { blocked = [] } = await chrome.storage.local.get(['blocked']);
+
+    if (ruleId) {
+      const match = blocked.find((r) => r.id === ruleId);
+      if (match && match.message && match.message.trim()) {
+        customMessage = match.message.trim();
+      }
+    }
+
+    if (!customMessage && targetUrl && self.RulesEngine) {
+      const parts = self.RulesEngine.getUrlParts(targetUrl);
+      const match = blocked.find((r) => self.RulesEngine.ruleMatches(parts, [r.domain, r.substring]));
+      if (match && match.message && match.message.trim()) {
+        customMessage = match.message.trim();
+      }
+    }
+  } catch (err) {
+    console.error('[GatesOfHeavenAndHell] Failed to retrieve rule message:', err);
+  }
+
+  messageEl.textContent = customMessage || pick(MESSAGES);
+})();
 
 const gate = document.querySelector('.gate');
 const content = document.querySelector('.content');
