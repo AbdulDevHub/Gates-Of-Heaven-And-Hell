@@ -149,6 +149,65 @@ html, body {
 
 .rule-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; }
 
+/* ---------------------------------------------------------------- */
+/* Domain groups (collapsible, only used when a domain has 2+ rules) */
+/* ---------------------------------------------------------------- */
+
+.domain-group {
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.domain-group summary {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  list-style: none;
+  font-weight: 600;
+  font-size: 0.92rem;
+  user-select: none;
+}
+
+.domain-group summary::-webkit-details-marker { display: none; }
+
+.domain-group summary::before {
+  content: '\25B8'; /* ▸ */
+  color: var(--gold);
+  font-size: 0.75rem;
+  transition: transform 0.15s ease;
+  flex-shrink: 0;
+}
+
+.domain-group[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.group-domain { flex: 1; }
+
+.group-count {
+  font-weight: 500;
+  font-size: 0.74rem;
+  color: var(--mist);
+  background: var(--ink-3);
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+}
+
+.rule-list-nested {
+  padding: 0 0.75rem 0.75rem;
+  gap: 0.4rem;
+}
+
+.rule-list-nested .rule-row {
+  background: var(--ink-3);
+}
+
+.rule-sub-muted { font-style: italic; opacity: 0.75; }
+
 .rule-row {
   display: flex;
   align-items: center;
@@ -172,6 +231,17 @@ html, body {
   color: var(--mist);
   font-size: 0.8rem;
   font-family: 'IBM Plex Mono', monospace;
+}
+
+.rule-message {
+  color: var(--mist);
+  font-size: 0.8rem;
+  margin-top: 0.15rem;
+  max-width: 480px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: help; /* hover to see the full message via the title attribute */
 }
 
 .rule-meta {
@@ -207,6 +277,31 @@ html, body {
 }
 
 /* ---------------------------------------------------------------- */
+/* Inline edit form (replaces a row's contents while editing)        */
+/* ---------------------------------------------------------------- */
+
+.edit-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr auto;
+  gap: 0.5rem;
+  align-items: center;
+  width: 100%;
+}
+
+.edit-form input {
+  background: var(--ink-3);
+  border: 1px solid var(--line);
+  color: var(--parchment);
+  border-radius: 6px;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+}
+.edit-form input:focus { outline: none; border-color: var(--gold); }
+
+.edit-actions { display: flex; gap: 0.4rem; }
+
+/* ---------------------------------------------------------------- */
 /* Modal                                                             */
 /* ---------------------------------------------------------------- */
 
@@ -218,6 +313,15 @@ html, body {
   align-items: center;
   justify-content: center;
   z-index: 50;
+}
+
+/* Author-stylesheet `.modal-backdrop { display: flex }` and the browser's
+   built-in `[hidden] { display: none }` rule are equal specificity — at a
+   tie, author CSS wins over the UA stylesheet, so `modal.hidden = true`
+   was silently doing nothing and the modal rendered on every page load.
+   This compound selector has higher specificity and forces it closed. */
+.modal-backdrop[hidden] {
+  display: none;
 }
 
 .modal {

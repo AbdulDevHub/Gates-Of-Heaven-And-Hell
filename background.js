@@ -14,6 +14,9 @@ const ALARM_LOCK_PREFIX = 'lock:';
 const ALARM_COUNTDOWN_PREFIX = 'removalCountdown:';
 const REMOVAL_COUNTDOWN_MS = 30 * 60 * 1000; // 30 minutes
 
+let isRebuilding = false; // Prevents overlapping calls from racing on rule IDs
+let rebuildQueued = false; // If a change arrives mid-rebuild, don't drop it — rerun after
+
 ////////////////////////////////////////////////////////////////////////////
 // Toolbar icon -> open the rule book
 ////////////////////////////////////////////////////////////////////////////
@@ -91,49 +94,84 @@ function parseJsonc(text) {
 ////////////////////////////////////////////////////////////////////////////
 
 async function rebuildDnrRules() {
-  const { blocked = [], excluded = [] } = await chrome.storage.local.get(['blocked', 'excluded']);
-
-  const newRules = [];
-  let nextId = 1;
-
-  // EXCLUDED first, higher priority "allow" — always wins, unconditionally.
-  for (const rule of excluded) {
-    const regexFilter = self.RulesEngine.buildRegexFilter(rule.domain, rule.substring);
-    if (!regexFilter) continue;
-    newRules.push({
-      id: nextId++,
-      priority: 2,
-      action: { type: 'allow' },
-      condition: { regexFilter, resourceTypes: ['main_frame'] }
-    });
+  if (isRebuilding) {
+    rebuildQueued = true; // don't drop it — storage has moved on since this call started
+    return;
   }
-
-  // BLOCKED — redirect to the extension's blocked page.
-  for (const rule of blocked) {
-    const regexFilter = self.RulesEngine.buildRegexFilter(rule.domain, rule.substring);
-    if (!regexFilter) continue;
-    newRules.push({
-      id: nextId++,
-      priority: 1,
-      action: { type: 'redirect', redirect: { extensionPath: '/blocked.html' } },
-      condition: { regexFilter, resourceTypes: ['main_frame'] }
-    });
-  }
-
-  const existing = await chrome.declarativeNetRequest.getDynamicRules();
-  const removeRuleIds = existing.map((r) => r.id);
+  isRebuilding = true;
 
   try {
+    const { blocked = [], excluded = [] } = await chrome.storage.local.get(['blocked', 'excluded']);
+
+    const newRules = [];
+    let nextId = 1;
+
+    // EXCLUDED first, higher priority "allow" — always wins, unconditionally.
+    for (const rule of excluded) {
+      const regexFilter = self.RulesEngine.buildRegexFilter(rule.domain, rule.substring);
+      if (!regexFilter) continue;
+      newRules.push({
+        id: nextId++,
+        priority: 2,
+        action: { type: 'allow' },
+        condition: { regexFilter, resourceTypes: ['main_frame'] }
+      });
+    }
+
+    // BLOCKED — redirect to the extension's blocked page.
+    for (const rule of blocked) {
+      const regexFilter = self.RulesEngine.buildRegexFilter(rule.domain, rule.substring);
+      if (!regexFilter) continue;
+      newRules.push({
+        id: nextId++,
+        priority: 1,
+        action: { type: 'redirect', redirect: { extensionPath: '/blocked.html' } },
+        condition: { regexFilter, resourceTypes: ['main_frame'] }
+      });
+    }
+
+    const existing = await chrome.declarativeNetRequest.getDynamicRules();
+    const removeRuleIds = existing.map((r) => r.id);
+
     await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds, addRules: newRules });
   } catch (err) {
     console.error('[GatesOfHeavenAndHell] Failed to update DNR rules:', err);
+  } finally {
+    isRebuilding = false;
+    if (rebuildQueued) {
+      rebuildQueued = false;
+      rebuildDnrRules(); // storage changed again while we were mid-rebuild — catch up
+    }
   }
 }
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
-  if (changes.blocked || changes.excluded) {
+  
+  if (changes.excluded) {
     rebuildDnrRules();
+    return;
+  }
+
+  if (changes.blocked) {
+    const oldBlocked = changes.blocked.oldValue || [];
+    const newBlocked = changes.blocked.newValue || [];
+
+    // Length mismatch means rules were added or removed structurally
+    if (oldBlocked.length !== newBlocked.length) {
+      rebuildDnrRules();
+      return;
+    }
+
+    // Check if substantive details (domains or substrings) changed
+    const filtersChanged = newBlocked.some((rule, i) => {
+      const match = oldBlocked[i];
+      return !match || rule.domain !== match.domain || rule.substring !== match.substring;
+    });
+
+    if (filtersChanged) {
+      rebuildDnrRules();
+    }
   }
 });
 
@@ -144,12 +182,14 @@ chrome.storage.onChanged.addListener((changes, area) => {
 async function reconcileAllAlarms() {
   const { blocked = [] } = await chrome.storage.local.get(['blocked']);
   const now = Date.now();
+  let stateModified = false;
 
   for (const rule of blocked) {
     if (rule.locked && rule.lockedUntil) {
       if (rule.lockedUntil <= now) {
         rule.locked = false;
         rule.lockedUntil = null;
+        stateModified = true;
       } else {
         chrome.alarms.create(ALARM_LOCK_PREFIX + rule.id, { when: rule.lockedUntil });
       }
@@ -157,13 +197,17 @@ async function reconcileAllAlarms() {
     if (rule.pendingRemoval && rule.pendingRemoval.stage === 'countdown') {
       if (rule.pendingRemoval.readyAt <= now) {
         rule.pendingRemoval.stage = 'ready';
+        stateModified = true;
       } else {
         chrome.alarms.create(ALARM_COUNTDOWN_PREFIX + rule.id, { when: rule.pendingRemoval.readyAt });
       }
     }
   }
 
-  await chrome.storage.local.set({ blocked });
+  // Only update storage if we actually mutated expiry elements locally
+  if (stateModified) {
+    await chrome.storage.local.set({ blocked });
+  }
 }
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {

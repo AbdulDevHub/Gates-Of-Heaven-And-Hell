@@ -64,13 +64,18 @@
   }
 
   // Builds a case-insensitive RE2 pattern string (no leading/trailing
-  // slashes — DNR's regexFilter field takes the bare pattern).
+  // slashes — DNR's regexFilter field takes the bare pattern). Anchored to
+  // require an http(s) scheme so this can NEVER match a chrome-extension://
+  // URL — without this, a short/generic domain or substring can accidentally
+  // match the extension's own blocked.html redirect target (its URL contains
+  // the 32-character extension ID), causing a redirect loop that Chrome
+  // surfaces as ERR_BLOCKED_BY_CLIENT instead of the blocked page.
   function buildRegexFilter(domain, substring) {
     const d = escapeRegex((domain || '').toLowerCase());
     if (!d) return null;
     const s = (substring || '').trim();
     const pattern = s ? `${d}.*${escapeRegex(s.toLowerCase())}` : d;
-    return `(?i)${pattern}`;
+    return `(?i)^https?://.*${pattern}`;
   }
 
   const api = {

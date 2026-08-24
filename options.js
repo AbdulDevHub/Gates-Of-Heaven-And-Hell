@@ -9,6 +9,7 @@ const REMOVAL_COUNTDOWN_MS = 30 * 60 * 1000;
 
 let state = { blocked: [], excluded: [] };
 let pendingReflect = null; // { ruleId, step: 1|2 }
+let editingRuleId = null; // id of the rule currently showing its inline edit form (one at a time)
 
 ////////////////////////////////////////////////////////////////////////////
 // Boot
@@ -93,76 +94,184 @@ function render() {
   renderExcluded();
 }
 
+// Groups rules by lowercased domain, preserving first-seen casing for
+// display. Sorted alphabetically. Domains with only one rule are returned
+// alongside the rest — the caller decides whether to wrap them in a
+// collapsible group (we only bother when there's more than one entry).
+function groupByDomain(rules) {
+  const map = new Map();
+  for (const r of rules) {
+    const key = (r.domain || '').toLowerCase();
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push(r);
+  }
+  return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+}
+
 function renderBlocked() {
   const list = document.getElementById('blockedList');
   const empty = document.getElementById('blockedEmpty');
   const now = Date.now();
 
+  // The whole list gets rebuilt every second for the countdown badges —
+  // capture which domain groups were expanded first so re-rendering
+  // doesn't snap them shut on you.
+  const openBefore = new Set();
+  list.querySelectorAll('details.domain-group[open]').forEach((d) => openBefore.add(d.dataset.domain));
+
   list.innerHTML = '';
   empty.hidden = state.blocked.length > 0;
 
-  for (const rule of state.blocked) {
-    const li = document.createElement('li');
-    li.className = 'rule-row' + (rule.locked && rule.lockedUntil > now ? ' is-locked' : '');
+  for (const [domainKey, rules] of groupByDomain(state.blocked)) {
+    if (rules.length > 1) {
+      const details = document.createElement('details');
+      details.className = 'domain-group';
+      details.dataset.domain = domainKey;
+      if (openBefore.has(domainKey)) details.open = true;
 
-    const isLocked = rule.locked && rule.lockedUntil > now;
-    const pr = rule.pendingRemoval;
+      const summary = document.createElement('summary');
+      summary.innerHTML = `<span class="group-domain">${escapeHtml(rules[0].domain)}</span><span class="group-count">${rules.length} rules</span>`;
+      details.appendChild(summary);
 
-    let metaHtml = '';
-    let actionsHtml = '';
+      const nested = document.createElement('ul');
+      nested.className = 'rule-list rule-list-nested';
+      for (const rule of rules) nested.appendChild(buildBlockedRow(rule, now, true));
+      details.appendChild(nested);
 
-    if (isLocked) {
-      metaHtml = `<span class="badge badge-locked">🔒 Locked until ${formatDate(rule.lockedUntil)}</span>`;
-      actionsHtml = ``; // no controls at all — hard lock, no bypass
-    } else if (pr && pr.stage === 'countdown') {
-      const remaining = pr.readyAt - now;
-      metaHtml = `<span class="badge badge-countdown">⏳ Cooling off — ${formatCountdown(remaining)}</span>`;
-      actionsHtml = `<button class="btn btn-ghost btn-small" data-action="cancel-removal" data-id="${rule.id}">Cancel</button>`;
-    } else if (pr && pr.stage === 'ready') {
-      metaHtml = `<span class="badge badge-ready">✅ Ready — reflect once more to finish</span>`;
-      actionsHtml = `
-        <button class="btn btn-ghost btn-small" data-action="cancel-removal" data-id="${rule.id}">Cancel</button>
-        <button class="btn btn-ember btn-small" data-action="finalize-removal" data-id="${rule.id}">Confirm Removal</button>
-      `;
+      list.appendChild(details);
     } else {
-      actionsHtml = `
-        <button class="btn btn-ghost btn-small" data-action="lock" data-id="${rule.id}">Lock</button>
-        <button class="btn btn-ghost btn-small" data-action="initiate-removal" data-id="${rule.id}">Remove</button>
-      `;
+      list.appendChild(buildBlockedRow(rules[0], now, false));
     }
-
-    li.innerHTML = `
-      <div class="rule-main">
-        <div class="rule-domain">${escapeHtml(rule.domain)}${rule.substring ? ` <span class="rule-sub">${escapeHtml(rule.substring)}</span>` : ''}</div>
-        ${rule.message ? `<div class="rule-sub">"${escapeHtml(rule.message)}"</div>` : ''}
-        ${metaHtml ? `<div class="rule-meta">${metaHtml}</div>` : ''}
-      </div>
-      <div class="rule-actions">${actionsHtml}</div>
-    `;
-    list.appendChild(li);
   }
+}
+
+function buildBlockedRow(rule, now, nested) {
+  const li = document.createElement('li');
+  const isLocked = rule.locked && rule.lockedUntil > now;
+  li.className = 'rule-row' + (isLocked ? ' is-locked' : '');
+
+  if (editingRuleId === rule.id) {
+    li.innerHTML = buildEditForm(rule, 'blocked');
+    return li;
+  }
+
+  const pr = rule.pendingRemoval;
+  let metaHtml = '';
+  let actionsHtml = '';
+
+  if (isLocked) {
+    metaHtml = `<span class="badge badge-locked">🔒 Locked until ${formatDate(rule.lockedUntil)}</span>`;
+    actionsHtml = ``; // no controls at all — hard lock, no bypass, no edit either
+  } else if (pr && pr.stage === 'countdown') {
+    const remaining = pr.readyAt - now;
+    metaHtml = `<span class="badge badge-countdown">⏳ Cooling off — ${formatCountdown(remaining)}</span>`;
+    actionsHtml = `<button class="btn btn-ghost btn-small" data-action="cancel-removal" data-id="${rule.id}">Cancel</button>`;
+  } else if (pr && pr.stage === 'ready') {
+    metaHtml = `<span class="badge badge-ready">✅ Ready — reflect once more to finish</span>`;
+    actionsHtml = `
+      <button class="btn btn-ghost btn-small" data-action="cancel-removal" data-id="${rule.id}">Cancel</button>
+      <button class="btn btn-ember btn-small" data-action="finalize-removal" data-id="${rule.id}">Confirm Removal</button>
+    `;
+  } else {
+    actionsHtml = `
+      <button class="btn btn-ghost btn-small" data-action="edit" data-id="${rule.id}">Edit</button>
+      <button class="btn btn-ghost btn-small" data-action="lock" data-id="${rule.id}">Lock</button>
+      <button class="btn btn-ghost btn-small" data-action="initiate-removal" data-id="${rule.id}">Remove</button>
+    `;
+  }
+
+  const domainLine = nested
+    ? (rule.substring
+        ? `<span class="rule-sub">${escapeHtml(rule.substring)}</span>`
+        : `<span class="rule-sub rule-sub-muted">(whole domain)</span>`)
+    : `${escapeHtml(rule.domain)}${rule.substring ? ` <span class="rule-sub">${escapeHtml(rule.substring)}</span>` : ''}`;
+
+  li.innerHTML = `
+    <div class="rule-main">
+      <div class="rule-domain">${domainLine}</div>
+      ${rule.message ? `<div class="rule-message" title="${escapeHtml(rule.message)}">"${escapeHtml(rule.message)}"</div>` : ''}
+      ${metaHtml ? `<div class="rule-meta">${metaHtml}</div>` : ''}
+    </div>
+    <div class="rule-actions">${actionsHtml}</div>
+  `;
+  return li;
 }
 
 function renderExcluded() {
   const list = document.getElementById('excludedList');
   const empty = document.getElementById('excludedEmpty');
 
+  const openBefore = new Set();
+  list.querySelectorAll('details.domain-group[open]').forEach((d) => openBefore.add(d.dataset.domain));
+
   list.innerHTML = '';
   empty.hidden = state.excluded.length > 0;
 
-  for (const rule of state.excluded) {
-    const li = document.createElement('li');
-    li.className = 'rule-row';
-    li.innerHTML = `
-      <div class="rule-main">
-        <div class="rule-domain">${escapeHtml(rule.domain)}${rule.substring ? ` <span class="rule-sub">${escapeHtml(rule.substring)}</span>` : ''}</div>
-      </div>
-      <div class="rule-actions">
-        <button class="btn btn-ghost btn-small" data-action="remove-excluded" data-id="${rule.id}">Remove</button>
-      </div>
-    `;
-    list.appendChild(li);
+  for (const [domainKey, rules] of groupByDomain(state.excluded)) {
+    if (rules.length > 1) {
+      const details = document.createElement('details');
+      details.className = 'domain-group';
+      details.dataset.domain = domainKey;
+      if (openBefore.has(domainKey)) details.open = true;
+
+      const summary = document.createElement('summary');
+      summary.innerHTML = `<span class="group-domain">${escapeHtml(rules[0].domain)}</span><span class="group-count">${rules.length} rules</span>`;
+      details.appendChild(summary);
+
+      const nested = document.createElement('ul');
+      nested.className = 'rule-list rule-list-nested';
+      for (const rule of rules) nested.appendChild(buildExcludedRow(rule, true));
+      details.appendChild(nested);
+
+      list.appendChild(details);
+    } else {
+      list.appendChild(buildExcludedRow(rules[0], false));
+    }
   }
+}
+
+function buildExcludedRow(rule, nested) {
+  const li = document.createElement('li');
+  li.className = 'rule-row';
+
+  if (editingRuleId === rule.id) {
+    li.innerHTML = buildEditForm(rule, 'excluded');
+    return li;
+  }
+
+  const domainLine = nested
+    ? (rule.substring
+        ? `<span class="rule-sub">${escapeHtml(rule.substring)}</span>`
+        : `<span class="rule-sub rule-sub-muted">(whole domain)</span>`)
+    : `${escapeHtml(rule.domain)}${rule.substring ? ` <span class="rule-sub">${escapeHtml(rule.substring)}</span>` : ''}`;
+
+  li.innerHTML = `
+    <div class="rule-main">
+      <div class="rule-domain">${domainLine}</div>
+    </div>
+    <div class="rule-actions">
+      <button class="btn btn-ghost btn-small" data-action="edit-excluded" data-id="${rule.id}">Edit</button>
+      <button class="btn btn-ghost btn-small" data-action="remove-excluded" data-id="${rule.id}">Remove</button>
+    </div>
+  `;
+  return li;
+}
+
+function buildEditForm(rule, type) {
+  const messageField = type === 'blocked'
+    ? `<input type="text" class="edit-message" placeholder="custom message (optional)" value="${escapeHtml(rule.message || '')}" />`
+    : '';
+  return `
+    <div class="edit-form">
+      <input type="text" class="edit-domain" placeholder="domain" value="${escapeHtml(rule.domain)}" />
+      <input type="text" class="edit-substring" placeholder="substring (optional)" value="${escapeHtml(rule.substring || '')}" />
+      ${messageField}
+      <div class="edit-actions">
+        <button class="btn btn-ghost btn-small" data-action="cancel-edit" data-id="${rule.id}">Cancel</button>
+        <button class="btn btn-gold btn-small" data-action="save-edit" data-type="${type}" data-id="${rule.id}">Save</button>
+      </div>
+    </div>
+  `;
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -205,21 +314,52 @@ document.getElementById('excludedForm').addEventListener('submit', async (e) => 
 document.getElementById('blockedList').addEventListener('click', async (e) => {
   const btn = e.target.closest('button[data-action]');
   if (!btn) return;
-  const { action, id } = btn.dataset;
+  const { action, id, type } = btn.dataset;
 
   if (action === 'lock') return lockRule(id);
   if (action === 'initiate-removal') return openReflectModal(id, 1);
   if (action === 'finalize-removal') return openReflectModal(id, 2);
   if (action === 'cancel-removal') return cancelRemoval(id);
+  if (action === 'edit') { editingRuleId = id; render(); return; }
+  if (action === 'cancel-edit') { editingRuleId = null; render(); return; }
+  if (action === 'save-edit') return saveEdit(btn.closest('li'), id, type);
 });
 
 document.getElementById('excludedList').addEventListener('click', async (e) => {
-  const btn = e.target.closest('button[data-action="remove-excluded"]');
+  const btn = e.target.closest('button[data-action]');
   if (!btn) return;
-  state.excluded = state.excluded.filter((r) => r.id !== btn.dataset.id);
-  await save();
-  toast('Exclusion removed.');
+  const { action, id, type } = btn.dataset;
+
+  if (action === 'remove-excluded') {
+    state.excluded = state.excluded.filter((r) => r.id !== id);
+    await save();
+    toast('Exclusion removed.');
+    return;
+  }
+  if (action === 'edit-excluded') { editingRuleId = id; render(); return; }
+  if (action === 'cancel-edit') { editingRuleId = null; render(); return; }
+  if (action === 'save-edit') return saveEdit(btn.closest('li'), id, type);
 });
+
+async function saveEdit(li, id, type) {
+  const domain = li.querySelector('.edit-domain').value.trim();
+  if (!domain) { toast('Domain can\u2019t be empty.'); return; }
+  const substring = li.querySelector('.edit-substring').value.trim();
+  const msgInput = li.querySelector('.edit-message');
+  const message = msgInput ? msgInput.value.trim() : undefined;
+
+  const list = type === 'blocked' ? state.blocked : state.excluded;
+  const rule = list.find((r) => r.id === id);
+  if (!rule) { editingRuleId = null; render(); return; }
+
+  rule.domain = domain;
+  rule.substring = substring;
+  if (type === 'blocked') rule.message = message;
+
+  editingRuleId = null;
+  await save();
+  toast('Rule updated.');
+}
 
 async function lockRule(id) {
   const rule = state.blocked.find((r) => r.id === id);
