@@ -40,6 +40,22 @@
 
     <section class="panel">
       <div class="panel-head">
+        <h2>Pause &amp; Think</h2>
+        <p class="panel-sub">Matches prompt a 15-second reflection gate before allowing access. Freely editable — no friction.</p>
+      </div>
+
+      <form id="pauseAndThinkForm" class="add-form">
+        <input type="text" id="pauseAndThinkDomain" placeholder="domain, e.g. reddit.com" required />
+        <input type="text" id="pauseAndThinkSubstring" placeholder="substring (optional), e.g. /r/popular" />
+        <button type="submit" class="btn btn-gold">Add</button>
+      </form>
+
+      <ul id="pauseAndThinkList" class="rule-list"></ul>
+      <p id="pauseAndThinkEmpty" class="empty-state" hidden>No Pause &amp; Think rules yet.</p>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
         <h2>Excluded</h2>
         <p class="panel-sub">Exclusions always win over blocked rules, unconditionally. Freely editable — no friction.</p>
       </div>

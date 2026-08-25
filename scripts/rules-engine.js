@@ -27,8 +27,15 @@
   // ---------------------------------------------------------------------
 
   function ruleMatches(urlParts, rule) {
-    const domain = (rule[0] || '').toLowerCase();
-    const sub = (rule[1] || '').toLowerCase();
+    let domain = '';
+    let sub = '';
+    if (Array.isArray(rule)) {
+      domain = (rule[0] || '').toLowerCase();
+      sub = (rule[1] || '').toLowerCase();
+    } else if (rule && typeof rule === 'object') {
+      domain = (rule.domain || '').toLowerCase();
+      sub = (rule.substring || '').toLowerCase();
+    }
 
     if (!domain) return false;
 
@@ -39,16 +46,31 @@
     return urlParts.full.includes(sub);
   }
 
-  function matchesAny(url, rules) {
-    if (!rules || !rules.length) return false;
+  function findMatchingRule(url, rules) {
+    if (!rules || !rules.length) return null;
     const parts = getUrlParts(url);
-    return rules.some((rule) => ruleMatches(parts, rule));
+    return rules.find((rule) => ruleMatches(parts, rule)) || null;
   }
 
-  // EXCLUDED always wins, unconditionally, regardless of specificity.
+  function matchesAny(url, rules) {
+    return Boolean(findMatchingRule(url, rules));
+  }
+
+  // Precedence order:
+  // 1. EXCLUDED always wins unconditionally (returns false for blocked).
+  // 2. PAUSE_AND_THINK overrides BLOCKED.
   function isEffectivelyBlocked(url, blockedRules, excludedRules) {
     if (matchesAny(url, excludedRules)) return false;
     return matchesAny(url, blockedRules);
+  }
+
+  // Evaluates URL state against all rule tiers:
+  // Returns: 'excluded' | 'pause' | 'blocked' | 'none'
+  function evaluateUrl(url, { blocked = [], excluded = [], pauseAndThink = [] } = {}) {
+    if (matchesAny(url, excluded)) return 'excluded';
+    if (matchesAny(url, pauseAndThink)) return 'pause';
+    if (matchesAny(url, blocked)) return 'blocked';
+    return 'none';
   }
 
   // ---------------------------------------------------------------------
@@ -76,8 +98,10 @@
   const api = {
     getUrlParts,
     ruleMatches,
+    findMatchingRule,
     matchesAny,
     isEffectivelyBlocked,
+    evaluateUrl,
     escapeRegex,
     buildRegexFilter
   };

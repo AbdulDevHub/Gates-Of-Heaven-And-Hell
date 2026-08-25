@@ -127,7 +127,10 @@ html, body {
   margin-bottom: 1.25rem;
 }
 
-#excludedForm { grid-template-columns: 1fr 1fr auto; }
+#excludedForm,
+#pauseAndThinkForm {
+  grid-template-columns: 1fr 1fr auto;
+}
 
 .add-form input {
   background: var(--ink-2);
@@ -290,7 +293,8 @@ html, body {
   width: 100%;
 }
 
-#excludedList .edit-form {
+#excludedList .edit-form,
+#pauseAndThinkList .edit-form {
   grid-template-columns: 1fr 1fr auto;
 }
 

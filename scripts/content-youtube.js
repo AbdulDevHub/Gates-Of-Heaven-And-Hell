@@ -1,6 +1,6 @@
 // content-youtube.js
-// Catches the YouTube search form BEFORE it navigates, so a blocked query
-// jumps straight to blocked.html instead of flashing the /results page first.
+// Catches the YouTube search form BEFORE it navigates, so a blocked or pause-intercepted query
+// jumps straight to blocked.html or pause.html instead of flashing the /results page first.
 
 document.addEventListener('submit', async (e) => {
   const form = e.target;
@@ -20,16 +20,37 @@ document.addEventListener('submit', async (e) => {
 
   const url = location.origin + '/results?search_query=' + encodeURIComponent(q);
 
-  const { blocked = [], excluded = [] } = await chrome.storage.local.get(['blocked', 'excluded']);
-  const activeBlocked = blocked.filter((r) => !r.paused);
-  const isBlocked = self.RulesEngine.isEffectivelyBlocked(url, activeBlocked, excluded);
+  const {
+    blocked = [],
+    excluded = [],
+    pauseAndThink = [],
+    pauseSessions = []
+  } = await chrome.storage.local.get(['blocked', 'excluded', 'pauseAndThink', 'pauseSessions']);
 
-  if (isBlocked) {
+  const activeBlocked = blocked.filter((r) => !r.paused);
+  const evaluation = self.RulesEngine.evaluateUrl(url, {
+    blocked: activeBlocked,
+    excluded,
+    pauseAndThink
+  });
+
+  if (evaluation === 'pause') {
+    const parts = self.RulesEngine.getUrlParts(url);
+    const hasActiveSession = pauseSessions.some((s) => self.RulesEngine.ruleMatches(parts, [s.domain, s.substring]));
+
+    if (!hasActiveSession) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+
+      const matchingRule = self.RulesEngine.findMatchingRule(url, pauseAndThink);
+      const ruleParam = matchingRule ? `&ruleId=${encodeURIComponent(matchingRule.id)}` : '';
+      location.href = chrome.runtime.getURL(`pages/pause.html?url=${encodeURIComponent(url)}${ruleParam}`);
+    }
+  } else if (evaluation === 'blocked') {
     e.preventDefault();
     e.stopImmediatePropagation();
 
-    const parts = self.RulesEngine.getUrlParts(url);
-    const matchingRule = activeBlocked.find((r) => self.RulesEngine.ruleMatches(parts, [r.domain, r.substring]));
+    const matchingRule = self.RulesEngine.findMatchingRule(url, activeBlocked);
     const ruleParam = matchingRule ? `&ruleId=${encodeURIComponent(matchingRule.id)}` : '';
     location.href = chrome.runtime.getURL(`pages/blocked.html?url=${encodeURIComponent(url)}${ruleParam}`);
   }

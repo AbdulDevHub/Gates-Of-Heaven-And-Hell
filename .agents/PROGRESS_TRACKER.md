@@ -27,6 +27,13 @@
   - Made **Delete** button instantly delete without delay.
   - Added `⏸️ Paused` state and instant **Resume** button.
   - Dynamic DNR re-compilation and YouTube content script bypass filtering for paused rules.
+- [x] **Pause & Think (Soft Gate) Feature**:
+  - Added third rule tier `PAUSE_AND_THINK` alongside `BLOCKED` and `EXCLUDED`.
+  - Priority hierarchy: `EXCLUDED` (Priority 4) > `Active Pause Sessions` (Priority 3) > `PAUSE_AND_THINK` (Priority 2) > `BLOCKED` (Priority 1).
+  - Non-telegraphed 15-second ambient reflection gate (`pages/pause.html`) asking *"Are You Sure You Want To Continue?"*.
+  - Unlocks input requiring typed confirmation *"Yes I Am Sure"* to pass through.
+  - Active session tracking with 5-minute inactivity grace period when leaving all matching tabs.
+  - Full Rule Book UI management and JSONC Import/Export integration.
 - [x] **Agent Documentation**:
   - Added `.agents/AGENTS.md`, `.agents/PROGRESS_TRACKER.md`, and `.agents/ARCHITECTURE.md`.
 

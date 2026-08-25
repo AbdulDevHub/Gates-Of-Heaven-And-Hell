@@ -1,0 +1,358 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Inter:wght@400;500;600&display=swap');
+
+:root {
+  --ink: #0b0f14;
+  --ink-2: #12181f;
+  --ink-3: #1a222b;
+  --parchment: #ede6d6;
+  --gold: #c9a227;
+  --gold-bright: #e8c158;
+  --gold-dim: #7a631c;
+  --ember: #8b2e2e;
+  --mist: #6b7787;
+  --mist-light: #9ba8b8;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  background: var(--ink);
+  color: var(--parchment);
+  font-family: 'Inter', system-ui, sans-serif;
+  overflow: hidden;
+}
+
+.stage {
+  position: relative;
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2.25rem;
+  background:
+    radial-gradient(ellipse 65% 50% at 50% 35%, rgba(201, 162, 39, 0.12), transparent 70%),
+    var(--ink);
+  padding: 5vh 6vw;
+}
+
+/* ---------------------------------------------------------------- */
+/* Gate visual                                                      */
+/* ---------------------------------------------------------------- */
+
+.gate {
+  position: relative;
+  width: min(380px, 58vw);
+  height: min(46vh, 380px);
+  border-radius: 50% 50% 4px 4px / 22% 22% 0 0;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 1px rgba(201, 162, 39, 0.35),
+    0 30px 80px -20px rgba(0, 0, 0, 0.8),
+    0 0 60px -10px rgba(201, 162, 39, 0.12);
+  flex-shrink: 0;
+}
+
+.gate-arch {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 90% 70% at 50% 15%, rgba(232, 193, 88, 0.35), transparent 65%),
+    linear-gradient(180deg, #2a2110 0%, var(--ink-2) 55%, var(--ink) 100%);
+}
+
+.gate-leaf {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 52%;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.18) 0px,
+      rgba(0, 0, 0, 0.18) 2px,
+      transparent 2px,
+      transparent 14px
+    ),
+    linear-gradient(180deg, var(--ink-3) 0%, var(--ink-2) 100%);
+  transition: transform 1.15s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.gate-leaf.left {
+  left: 0;
+  transform: translateX(-105%);
+  border-right: 2px solid rgba(201, 162, 39, 0.55);
+}
+
+.gate-leaf.right {
+  right: 0;
+  transform: translateX(105%);
+  border-left: 2px solid rgba(201, 162, 39, 0.55);
+}
+
+.gate.is-closed .gate-leaf.left,
+.gate.is-closed .gate-leaf.right {
+  transform: translateX(0);
+}
+
+.gate-ring {
+  position: absolute;
+  top: 42%;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2.5px solid var(--gold);
+  box-shadow: 0 0 12px rgba(201, 162, 39, 0.5);
+  opacity: 0;
+  transition: opacity 0.5s ease 1.05s;
+}
+
+.gate.is-closed .gate-ring {
+  opacity: 1;
+}
+
+.gate-leaf.left .gate-ring { right: 14%; }
+.gate-leaf.right .gate-ring { left: 14%; }
+
+.gate-grain {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), transparent 40%);
+  pointer-events: none;
+}
+
+.gate-seam {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, transparent, var(--gold-bright), transparent);
+  opacity: 0;
+  transition: opacity 0.4s ease 1.1s;
+  z-index: 2;
+}
+
+.gate.is-closed .gate-seam {
+  opacity: 0.9;
+}
+
+/* ---------------------------------------------------------------- */
+/* Content area                                                     */
+/* ---------------------------------------------------------------- */
+
+.content {
+  text-align: center;
+  max-width: 580px;
+  width: 100%;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.7s ease 1.15s, transform 0.7s ease 1.15s;
+}
+
+.content.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.eyebrow {
+  margin: 0 0 0.75rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 600;
+}
+
+.message {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-weight: 600;
+  font-size: clamp(1.8rem, 3.8vw, 2.4rem);
+  line-height: 1.25;
+  margin: 0 0 0.75rem;
+  color: var(--parchment);
+}
+
+.sub {
+  margin: 0 0 1.75rem;
+  font-size: 0.95rem;
+  color: var(--mist);
+  line-height: 1.6;
+}
+
+/* ---------------------------------------------------------------- */
+/* Pause Form & Reflection Input                                     */
+/* ---------------------------------------------------------------- */
+
+.pause-form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.35rem;
+  width: 100%;
+}
+
+.input-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  border-radius: 999px;
+  padding: 2px;
+  background: var(--ink-2);
+  border: 1px solid rgba(201, 162, 39, 0.25);
+  transition: border-color 0.6s ease, box-shadow 0.6s ease, transform 0.4s ease;
+}
+
+/* Ambient breathing shimmer during 15s delay — does NOT telegraph progress */
+.input-wrapper.is-locked {
+  animation: ambientBreathe 3.6s ease-in-out infinite;
+}
+
+@keyframes ambientBreathe {
+  0%, 100% {
+    border-color: rgba(201, 162, 39, 0.2);
+    box-shadow: 0 0 12px rgba(201, 162, 39, 0.05);
+  }
+  50% {
+    border-color: rgba(232, 193, 88, 0.45);
+    box-shadow: 0 0 24px rgba(201, 162, 39, 0.16);
+  }
+}
+
+.input-wrapper.is-unlocked {
+  animation: none;
+  border-color: var(--gold-bright);
+  box-shadow: 0 0 20px rgba(201, 162, 39, 0.25);
+}
+
+.confirm-input {
+  width: 100%;
+  appearance: none;
+  border: none;
+  background: var(--ink-3);
+  color: var(--parchment);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.95rem;
+  padding: 0.85rem 1.4rem;
+  border-radius: 999px;
+  text-align: center;
+  outline: none;
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+.confirm-input:disabled {
+  color: var(--mist);
+  font-style: italic;
+  cursor: wait;
+}
+
+.confirm-input:not(:disabled):focus {
+  background: #1e2833;
+}
+
+/* ---------------------------------------------------------------- */
+/* Action Buttons                                                   */
+/* ---------------------------------------------------------------- */
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  width: 100%;
+}
+
+.btn-walkaway {
+  appearance: none;
+  border: 1px solid var(--gold);
+  background: transparent;
+  color: var(--gold-bright);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.92rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  padding: 0.75rem 2rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.25s ease, color 0.25s ease, box-shadow 0.25s ease, transform 0.15s ease;
+}
+
+.btn-walkaway:hover,
+.btn-walkaway:focus-visible {
+  background: var(--gold);
+  color: var(--ink);
+  box-shadow: 0 0 20px rgba(201, 162, 39, 0.35);
+  outline: none;
+}
+
+.btn-walkaway:active {
+  transform: scale(0.98);
+}
+
+.btn-continue {
+  appearance: none;
+  border: 1px solid transparent;
+  background: rgba(201, 162, 39, 0.12);
+  color: var(--mist);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.92rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  padding: 0.75rem 2rem;
+  border-radius: 999px;
+  cursor: not-allowed;
+  transition: background 0.25s ease, color 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.btn-continue.is-ready {
+  background: var(--gold);
+  color: var(--ink);
+  border-color: var(--gold-bright);
+  box-shadow: 0 0 24px rgba(201, 162, 39, 0.4);
+  cursor: pointer;
+}
+
+.btn-continue.is-ready:hover {
+  background: var(--gold-bright);
+  box-shadow: 0 0 30px rgba(232, 193, 88, 0.55);
+}
+
+/* ---------------------------------------------------------------- */
+/* Toast Affirmations                                               */
+/* ---------------------------------------------------------------- */
+
+.toast {
+  position: fixed;
+  bottom: 8vh;
+  left: 50%;
+  transform: translateX(-50%) translateY(14px);
+  background: var(--ink-3);
+  border: 1px solid rgba(201, 162, 39, 0.45);
+  color: var(--parchment);
+  padding: 0.9rem 1.6rem;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease, transform 0.4s ease;
+  box-shadow: 0 12px 30px -8px rgba(0, 0, 0, 0.6);
+  z-index: 100;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gate-leaf, .content, .toast, .gate-ring, .gate-seam, .input-wrapper {
+    transition-duration: 0.01ms !important;
+    animation: none !important;
+  }
+}

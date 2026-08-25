@@ -49,6 +49,9 @@
         "pages/blocked.html",
         "styles/blocked.css",
         "scripts/blocked.js",
+        "pages/pause.html",
+        "styles/pause.css",
+        "scripts/pause.js",
         "scripts/rules-engine.js"
       ],
       "matches": ["<all_urls>"]

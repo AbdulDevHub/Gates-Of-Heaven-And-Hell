@@ -15,16 +15,19 @@
 
 2. **Zero Bypass via declarativeNetRequest**:
    - Blocking happens before network packets leave the browser (`declarativeNetRequest` dynamic rules).
-   - `EXCLUDED` rules are compiled at Priority 2 (`allow`) and unconditionally override `BLOCKED` rules at Priority 1 (`redirect` to `pages/blocked.html`).
-   - `paused` rules (`rule.paused === true`) are skipped during DNR compilation so they do not block traffic while paused.
+   - `EXCLUDED` rules are compiled at Priority 4 (`allow`) and unconditionally override all rules.
+   - Active `pauseSessions` are compiled at Priority 3 (`allow`) when temporary access is granted.
+   - `PAUSE_AND_THINK` rules are compiled at Priority 2 (`redirect` to `pages/pause.html`), overriding `BLOCKED` rules.
+   - `BLOCKED` rules are compiled at Priority 1 (`redirect` to `pages/blocked.html`).
+   - `paused` blocked rules (`rule.paused === true`) are skipped during DNR compilation so they do not block traffic while paused.
 
 3. **Incognito Window Isolation**:
    - Configured with `"incognito": "split"` in `manifest.json`.
-   - In split incognito mode, the extension creates an isolated instance in incognito windows. `pages/blocked.html` and the Rule Book run without Chrome client security policy blocks.
+   - In split incognito mode, the extension creates an isolated instance in incognito windows. `pages/blocked.html`, `pages/pause.html`, and the Rule Book run without Chrome client security policy blocks.
 
 4. **Pure & Modular Rules Engine**:
    - `scripts/rules-engine.js` is pure JavaScript with zero dependencies and no `chrome.*` API dependencies.
-   - It is shared across `background.js` (service worker), `content-youtube.js` (content script), and `blocked.js` (DOM page).
+   - It is shared across `background.js` (service worker), `content-youtube.js` (content script), `blocked.js`, and `pause.js`.
    - Any matching regex compiled for DNR must use RE2-compatible syntax (no backreferences, no lookaheads/lookbehinds).
 
 5. **Aesthetics & Technology Stack**:
@@ -51,6 +54,25 @@ interface BlockedRule {
     startedAt: number;
     readyAt: number; // startedAt + 30 minutes
   } | null;
+}
+```
+
+### `pauseAndThink` (Array of Rule Objects)
+```typescript
+interface PauseAndThinkRule {
+  id: string; // crypto.randomUUID()
+  domain: string; // e.g. "reddit.com"
+  substring?: string; // e.g. "r/all"
+}
+```
+
+### `pauseSessions` (Array of Active Session Objects)
+```typescript
+interface PauseSession {
+  ruleId: string;
+  domain: string;
+  substring: string;
+  activatedAt: number;
 }
 ```
 

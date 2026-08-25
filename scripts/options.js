@@ -8,7 +8,7 @@ const ALARM_COUNTDOWN_PREFIX = 'pauseCountdown:';
 const LEGACY_ALARM_COUNTDOWN_PREFIX = 'removalCountdown:';
 const PAUSE_COUNTDOWN_MS = 30 * 60 * 1000;
 
-let state = { blocked: [], excluded: [] };
+let state = { blocked: [], excluded: [], pauseAndThink: [] };
 let pendingReflect = null; // { ruleId, step: 1|2 }
 let editingRuleId = null; // id of the rule currently showing its inline edit form (one at a time)
 
@@ -25,7 +25,7 @@ let editingRuleId = null; // id of the rule currently showing its inline edit fo
 
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'local') return;
-    if (changes.blocked || changes.excluded) {
+    if (changes.blocked || changes.excluded || changes.pauseAndThink) {
       load().then(() => {
         // If the user is currently editing a rule, avoid wiping out their active inputs
         if (!editingRuleId) {
@@ -37,12 +37,20 @@ let editingRuleId = null; // id of the rule currently showing its inline edit fo
 })();
 
 async function load() {
-  const { blocked = [], excluded = [] } = await chrome.storage.local.get(['blocked', 'excluded']);
-  state = { blocked, excluded };
+  const { blocked = [], excluded = [], pauseAndThink = [] } = await chrome.storage.local.get([
+    'blocked',
+    'excluded',
+    'pauseAndThink'
+  ]);
+  state = { blocked, excluded, pauseAndThink };
 }
 
 async function save() {
-  await chrome.storage.local.set({ blocked: state.blocked, excluded: state.excluded });
+  await chrome.storage.local.set({
+    blocked: state.blocked,
+    excluded: state.excluded,
+    pauseAndThink: state.pauseAndThink
+  });
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -65,8 +73,11 @@ function formatCountdown(ms) {
 
 function formatDate(ts) {
   return new Date(ts).toLocaleString(undefined, {
-    weekday: 'short', month: 'short', day: 'numeric',
-    hour: 'numeric', minute: '2-digit'
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit'
   });
 }
 
@@ -140,6 +151,7 @@ function tickCountdowns() {
 
 function render() {
   renderBlocked();
+  renderPauseAndThink();
   renderExcluded();
 }
 
@@ -190,8 +202,8 @@ function renderBlocked() {
 function buildBlockedRow(rule, now, nested) {
   const li = document.createElement('li');
   const isLocked = rule.locked && rule.lockedUntil > now;
-  const isPaused = Boolean(rule.paused);
-  li.className = 'rule-row' + (isLocked ? ' is-locked' : '') + (isPaused ? ' is-paused' : '');
+  li.className = 'rule-row' + (isLocked ? ' is-locked' : '') + (rule.paused ? ' is-paused' : '');
+  li.dataset.id = rule.id;
 
   if (editingRuleId === rule.id) {
     li.innerHTML = buildEditForm(rule, 'blocked');
@@ -199,39 +211,35 @@ function buildBlockedRow(rule, now, nested) {
     return li;
   }
 
-  const pp = rule.pendingPause || rule.pendingRemoval;
   let metaHtml = '';
   let actionsHtml = '';
+  const pp = rule.pendingPause || rule.pendingRemoval;
 
   if (isLocked) {
     metaHtml = `<span class="badge badge-locked">🔒 Locked until ${formatDate(rule.lockedUntil)}</span>`;
-    actionsHtml = ``; // no controls at all — hard lock, no bypass
-  } else if (pp && pp.stage === 'countdown') {
-    const remaining = pp.readyAt - now;
-    metaHtml = `<span class="badge badge-countdown" data-ready-at="${pp.readyAt}">⏳ Cooling off — ${formatCountdown(remaining)}</span>`;
-    actionsHtml = `
-      <button class="btn btn-ghost btn-small" data-action="cancel-pause" data-id="${rule.id}">Cancel</button>
-      <button class="btn btn-ghost btn-small" data-action="delete" data-id="${rule.id}">Delete</button>
-    `;
-  } else if (pp && pp.stage === 'ready') {
-    metaHtml = `<span class="badge badge-ready">✅ Ready — reflect once more to pause</span>`;
-    actionsHtml = `
-      <button class="btn btn-ghost btn-small" data-action="cancel-pause" data-id="${rule.id}">Cancel</button>
-      <button class="btn btn-ember btn-small" data-action="finalize-pause" data-id="${rule.id}">Confirm Pause</button>
-      <button class="btn btn-ghost btn-small" data-action="delete" data-id="${rule.id}">Delete</button>
-    `;
-  } else if (isPaused) {
+    actionsHtml = ``;
+  } else if (rule.paused) {
     metaHtml = `<span class="badge badge-paused">⏸️ Paused</span>`;
     actionsHtml = `
       <button class="btn btn-gold btn-small" data-action="resume" data-id="${rule.id}">Resume</button>
       <button class="btn btn-ghost btn-small" data-action="edit" data-id="${rule.id}">Edit</button>
       <button class="btn btn-ghost btn-small" data-action="delete" data-id="${rule.id}">Delete</button>
     `;
+  } else if (pp && pp.stage === 'countdown') {
+    const remaining = pp.readyAt - now;
+    metaHtml = `<span class="badge badge-countdown" data-ready-at="${pp.readyAt}">⏳ Cooling off — ${formatCountdown(remaining)}</span>`;
+    actionsHtml = `<button class="btn btn-ghost btn-small" data-action="cancel-pause" data-id="${rule.id}">Cancel</button>`;
+  } else if (pp && pp.stage === 'ready') {
+    metaHtml = `<span class="badge badge-ready">⚠️ Ready to pause</span>`;
+    actionsHtml = `
+      <button class="btn btn-ghost btn-small" data-action="cancel-pause" data-id="${rule.id}">Cancel</button>
+      <button class="btn btn-ember btn-small" data-action="finalize-pause" data-id="${rule.id}">Confirm Pause</button>
+    `;
   } else {
     actionsHtml = `
-      <button class="btn btn-ghost btn-small" data-action="pause" data-id="${rule.id}">Pause</button>
       <button class="btn btn-ghost btn-small" data-action="edit" data-id="${rule.id}">Edit</button>
       <button class="btn btn-ghost btn-small" data-action="lock" data-id="${rule.id}">Lock</button>
+      <button class="btn btn-ghost btn-small" data-action="pause" data-id="${rule.id}">Pause</button>
       <button class="btn btn-ghost btn-small" data-action="delete" data-id="${rule.id}">Delete</button>
     `;
   }
@@ -245,10 +253,73 @@ function buildBlockedRow(rule, now, nested) {
   li.innerHTML = `
     <div class="rule-main">
       <div class="rule-domain">${domainLine}</div>
-      ${rule.message ? `<div class="rule-message" title="${escapeHtml(rule.message)}">"${escapeHtml(rule.message)}"</div>` : ''}
+      ${rule.message ? `<div class="rule-message" title="${escapeHtml(rule.message)}">“${escapeHtml(rule.message)}”</div>` : ''}
       ${metaHtml ? `<div class="rule-meta">${metaHtml}</div>` : ''}
     </div>
     <div class="rule-actions">${actionsHtml}</div>
+  `;
+  return li;
+}
+
+function renderPauseAndThink() {
+  const list = document.getElementById('pauseAndThinkList');
+  const empty = document.getElementById('pauseAndThinkEmpty');
+
+  const openBefore = new Set();
+  list.querySelectorAll('details.domain-group[open]').forEach((d) => openBefore.add(d.dataset.domain));
+
+  list.innerHTML = '';
+  empty.hidden = state.pauseAndThink.length > 0;
+
+  for (const [domainKey, rules] of groupByDomain(state.pauseAndThink)) {
+    if (rules.length > 1) {
+      const details = document.createElement('details');
+      details.className = 'domain-group';
+      details.dataset.domain = domainKey;
+      if (openBefore.has(domainKey)) details.open = true;
+
+      const summary = document.createElement('summary');
+      summary.innerHTML = `<span class="group-domain">${escapeHtml(rules[0].domain)}</span><span class="group-count">${rules.length} rules</span>`;
+      details.appendChild(summary);
+
+      const nested = document.createElement('ul');
+      nested.className = 'rule-list rule-list-nested';
+      for (const rule of rules) nested.appendChild(buildPauseAndThinkRow(rule, true));
+      details.appendChild(nested);
+
+      list.appendChild(details);
+    } else {
+      list.appendChild(buildPauseAndThinkRow(rules[0], false));
+    }
+  }
+}
+
+function buildPauseAndThinkRow(rule, nested) {
+  const li = document.createElement('li');
+  li.className = 'rule-row';
+  li.dataset.id = rule.id;
+
+  if (editingRuleId === rule.id) {
+    li.innerHTML = buildEditForm(rule, 'pauseAndThink');
+    attachEditEvents(li, rule.id, 'pauseAndThink');
+    return li;
+  }
+
+  const domainLine = nested
+    ? (rule.substring
+        ? `<span class="rule-sub">${escapeHtml(rule.substring)}</span>`
+        : `<span class="rule-sub rule-sub-muted">(whole domain)</span>`)
+    : `${escapeHtml(rule.domain)}${rule.substring ? ` <span class="rule-sub">${escapeHtml(rule.substring)}</span>` : ''}`;
+
+  li.innerHTML = `
+    <div class="rule-main">
+      <div class="rule-domain">${domainLine}</div>
+      <div class="rule-meta"><span class="badge badge-paused">⏱️ 15s Reflection Gate</span></div>
+    </div>
+    <div class="rule-actions">
+      <button class="btn btn-ghost btn-small" data-action="edit-pauseAndThink" data-id="${rule.id}">Edit</button>
+      <button class="btn btn-ghost btn-small" data-action="remove-pauseAndThink" data-id="${rule.id}">Delete</button>
+    </div>
   `;
   return li;
 }
@@ -289,6 +360,7 @@ function renderExcluded() {
 function buildExcludedRow(rule, nested) {
   const li = document.createElement('li');
   li.className = 'rule-row';
+  li.dataset.id = rule.id;
 
   if (editingRuleId === rule.id) {
     li.innerHTML = buildEditForm(rule, 'excluded');
@@ -367,12 +439,33 @@ document.getElementById('blockedForm').addEventListener('submit', async (e) => {
 
   state.blocked.push({
     id: crypto.randomUUID(),
-    domain, substring, message,
-    locked: false, lockedUntil: null, paused: false, pendingPause: null
+    domain,
+    substring,
+    message,
+    locked: false,
+    lockedUntil: null,
+    paused: false,
+    pendingPause: null
   });
   await save();
   e.target.reset();
   toast('Blocked rule added.');
+});
+
+document.getElementById('pauseAndThinkForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const domain = document.getElementById('pauseAndThinkDomain').value.trim();
+  const substring = document.getElementById('pauseAndThinkSubstring').value.trim();
+  if (!domain) return;
+
+  state.pauseAndThink.push({
+    id: crypto.randomUUID(),
+    domain,
+    substring
+  });
+  await save();
+  e.target.reset();
+  toast('Pause & Think rule added.');
 });
 
 document.getElementById('excludedForm').addEventListener('submit', async (e) => {
@@ -407,6 +500,22 @@ document.getElementById('blockedList').addEventListener('click', async (e) => {
   if (action === 'save-edit') return saveEdit(btn.closest('li'), id, type);
 });
 
+document.getElementById('pauseAndThinkList').addEventListener('click', async (e) => {
+  const btn = e.target.closest('button[data-action]');
+  if (!btn) return;
+  const { action, id, type } = btn.dataset;
+
+  if (action === 'remove-pauseAndThink') {
+    state.pauseAndThink = state.pauseAndThink.filter((r) => r.id !== id);
+    await save();
+    toast('Pause & Think rule deleted.');
+    return;
+  }
+  if (action === 'edit-pauseAndThink') { editingRuleId = id; render(); return; }
+  if (action === 'cancel-edit') { editingRuleId = null; render(); return; }
+  if (action === 'save-edit') return saveEdit(btn.closest('li'), id, type);
+});
+
 document.getElementById('excludedList').addEventListener('click', async (e) => {
   const btn = e.target.closest('button[data-action]');
   if (!btn) return;
@@ -432,7 +541,10 @@ async function saveEdit(li, id, type) {
   const msgInput = li.querySelector('.edit-message');
   const message = msgInput ? msgInput.value.trim() : undefined;
 
-  const list = type === 'blocked' ? state.blocked : state.excluded;
+  let list = state.blocked;
+  if (type === 'excluded') list = state.excluded;
+  if (type === 'pauseAndThink') list = state.pauseAndThink;
+
   const rule = list.find((r) => r.id === id);
   if (!rule) { editingRuleId = null; render(); return; }
 
@@ -557,6 +669,7 @@ reflectConfirm.addEventListener('click', async () => {
 document.getElementById('exportBtn').addEventListener('click', () => {
   const payload = {
     BLOCKED: state.blocked.map((r) => r.message ? [r.domain, r.substring, r.message] : [r.domain, r.substring]),
+    PAUSE_AND_THINK: state.pauseAndThink.map((r) => [r.domain, r.substring]),
     EXCLUDED: state.excluded.map((r) => [r.domain, r.substring])
   };
   const text = '// Exported from Gates Of Heaven & Hell — ' + new Date().toISOString() + '\n' +
@@ -590,17 +703,29 @@ document.getElementById('importFile').addEventListener('change', async (e) => {
   }
 
   const ok = window.confirm(
-    'This replaces your current BLOCKED and EXCLUDED lists entirely (locks and pending pauses will be cleared). Continue?'
+    'This replaces your current BLOCKED, PAUSE & THINK, and EXCLUDED lists entirely (locks and pending pauses will be cleared). Continue?'
   );
   if (!ok) { e.target.value = ''; return; }
 
   state.blocked = (parsed.BLOCKED || []).map(([domain, substring, message]) => ({
     id: crypto.randomUUID(),
-    domain: domain || '', substring: substring || '', message: message || '',
-    locked: false, lockedUntil: null, paused: false, pendingPause: null
+    domain: domain || '',
+    substring: substring || '',
+    message: message || '',
+    locked: false,
+    lockedUntil: null,
+    paused: false,
+    pendingPause: null
+  }));
+  state.pauseAndThink = (parsed.PAUSE_AND_THINK || []).map(([domain, substring]) => ({
+    id: crypto.randomUUID(),
+    domain: domain || '',
+    substring: substring || ''
   }));
   state.excluded = (parsed.EXCLUDED || []).map(([domain, substring]) => ({
-    id: crypto.randomUUID(), domain: domain || '', substring: substring || ''
+    id: crypto.randomUUID(),
+    domain: domain || '',
+    substring: substring || ''
   }));
 
   await save();
