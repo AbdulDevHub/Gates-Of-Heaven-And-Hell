@@ -4,8 +4,9 @@
 // background.js reacts to storage changes on its own.
 
 const ALARM_LOCK_PREFIX = 'lock:';
-const ALARM_COUNTDOWN_PREFIX = 'removalCountdown:';
-const REMOVAL_COUNTDOWN_MS = 30 * 60 * 1000;
+const ALARM_COUNTDOWN_PREFIX = 'pauseCountdown:';
+const LEGACY_ALARM_COUNTDOWN_PREFIX = 'removalCountdown:';
+const PAUSE_COUNTDOWN_MS = 30 * 60 * 1000;
 
 let state = { blocked: [], excluded: [] };
 let pendingReflect = null; // { ruleId, step: 1|2 }
@@ -117,8 +118,11 @@ function tickCountdowns() {
       rule.lockedUntil = null;
       needsRender = true;
     }
-    if (rule.pendingRemoval && rule.pendingRemoval.stage === 'countdown' && rule.pendingRemoval.readyAt <= now) {
-      rule.pendingRemoval.stage = 'ready';
+    const pp = rule.pendingPause || rule.pendingRemoval;
+    if (pp && pp.stage === 'countdown' && pp.readyAt <= now) {
+      pp.stage = 'ready';
+      rule.pendingPause = pp;
+      delete rule.pendingRemoval;
       needsRender = true;
     }
   }
@@ -186,7 +190,8 @@ function renderBlocked() {
 function buildBlockedRow(rule, now, nested) {
   const li = document.createElement('li');
   const isLocked = rule.locked && rule.lockedUntil > now;
-  li.className = 'rule-row' + (isLocked ? ' is-locked' : '');
+  const isPaused = Boolean(rule.paused);
+  li.className = 'rule-row' + (isLocked ? ' is-locked' : '') + (isPaused ? ' is-paused' : '');
 
   if (editingRuleId === rule.id) {
     li.innerHTML = buildEditForm(rule, 'blocked');
@@ -194,28 +199,40 @@ function buildBlockedRow(rule, now, nested) {
     return li;
   }
 
-  const pr = rule.pendingRemoval;
+  const pp = rule.pendingPause || rule.pendingRemoval;
   let metaHtml = '';
   let actionsHtml = '';
 
   if (isLocked) {
     metaHtml = `<span class="badge badge-locked">🔒 Locked until ${formatDate(rule.lockedUntil)}</span>`;
     actionsHtml = ``; // no controls at all — hard lock, no bypass
-  } else if (pr && pr.stage === 'countdown') {
-    const remaining = pr.readyAt - now;
-    metaHtml = `<span class="badge badge-countdown" data-ready-at="${pr.readyAt}">⏳ Cooling off — ${formatCountdown(remaining)}</span>`;
-    actionsHtml = `<button class="btn btn-ghost btn-small" data-action="cancel-removal" data-id="${rule.id}">Cancel</button>`;
-  } else if (pr && pr.stage === 'ready') {
-    metaHtml = `<span class="badge badge-ready">✅ Ready — reflect once more to finish</span>`;
+  } else if (pp && pp.stage === 'countdown') {
+    const remaining = pp.readyAt - now;
+    metaHtml = `<span class="badge badge-countdown" data-ready-at="${pp.readyAt}">⏳ Cooling off — ${formatCountdown(remaining)}</span>`;
     actionsHtml = `
-      <button class="btn btn-ghost btn-small" data-action="cancel-removal" data-id="${rule.id}">Cancel</button>
-      <button class="btn btn-ember btn-small" data-action="finalize-removal" data-id="${rule.id}">Confirm Removal</button>
+      <button class="btn btn-ghost btn-small" data-action="cancel-pause" data-id="${rule.id}">Cancel</button>
+      <button class="btn btn-ghost btn-small" data-action="delete" data-id="${rule.id}">Delete</button>
+    `;
+  } else if (pp && pp.stage === 'ready') {
+    metaHtml = `<span class="badge badge-ready">✅ Ready — reflect once more to pause</span>`;
+    actionsHtml = `
+      <button class="btn btn-ghost btn-small" data-action="cancel-pause" data-id="${rule.id}">Cancel</button>
+      <button class="btn btn-ember btn-small" data-action="finalize-pause" data-id="${rule.id}">Confirm Pause</button>
+      <button class="btn btn-ghost btn-small" data-action="delete" data-id="${rule.id}">Delete</button>
+    `;
+  } else if (isPaused) {
+    metaHtml = `<span class="badge badge-paused">⏸️ Paused</span>`;
+    actionsHtml = `
+      <button class="btn btn-gold btn-small" data-action="resume" data-id="${rule.id}">Resume</button>
+      <button class="btn btn-ghost btn-small" data-action="edit" data-id="${rule.id}">Edit</button>
+      <button class="btn btn-ghost btn-small" data-action="delete" data-id="${rule.id}">Delete</button>
     `;
   } else {
     actionsHtml = `
+      <button class="btn btn-ghost btn-small" data-action="pause" data-id="${rule.id}">Pause</button>
       <button class="btn btn-ghost btn-small" data-action="edit" data-id="${rule.id}">Edit</button>
       <button class="btn btn-ghost btn-small" data-action="lock" data-id="${rule.id}">Lock</button>
-      <button class="btn btn-ghost btn-small" data-action="initiate-removal" data-id="${rule.id}">Remove</button>
+      <button class="btn btn-ghost btn-small" data-action="delete" data-id="${rule.id}">Delete</button>
     `;
   }
 
@@ -291,7 +308,7 @@ function buildExcludedRow(rule, nested) {
     </div>
     <div class="rule-actions">
       <button class="btn btn-ghost btn-small" data-action="edit-excluded" data-id="${rule.id}">Edit</button>
-      <button class="btn btn-ghost btn-small" data-action="remove-excluded" data-id="${rule.id}">Remove</button>
+      <button class="btn btn-ghost btn-small" data-action="remove-excluded" data-id="${rule.id}">Delete</button>
     </div>
   `;
   return li;
@@ -351,7 +368,7 @@ document.getElementById('blockedForm').addEventListener('submit', async (e) => {
   state.blocked.push({
     id: crypto.randomUUID(),
     domain, substring, message,
-    locked: false, lockedUntil: null, pendingRemoval: null
+    locked: false, lockedUntil: null, paused: false, pendingPause: null
   });
   await save();
   e.target.reset();
@@ -380,9 +397,11 @@ document.getElementById('blockedList').addEventListener('click', async (e) => {
   const { action, id, type } = btn.dataset;
 
   if (action === 'lock') return lockRule(id);
-  if (action === 'initiate-removal') return openReflectModal(id, 1);
-  if (action === 'finalize-removal') return openReflectModal(id, 2);
-  if (action === 'cancel-removal') return cancelRemoval(id);
+  if (action === 'pause') return openReflectModal(id, 1);
+  if (action === 'finalize-pause') return openReflectModal(id, 2);
+  if (action === 'cancel-pause') return cancelPause(id);
+  if (action === 'resume') return resumeRule(id);
+  if (action === 'delete') return deleteBlockedRule(id);
   if (action === 'edit') { editingRuleId = id; render(); return; }
   if (action === 'cancel-edit') { editingRuleId = null; render(); return; }
   if (action === 'save-edit') return saveEdit(btn.closest('li'), id, type);
@@ -396,7 +415,7 @@ document.getElementById('excludedList').addEventListener('click', async (e) => {
   if (action === 'remove-excluded') {
     state.excluded = state.excluded.filter((r) => r.id !== id);
     await save();
-    toast('Exclusion removed.');
+    toast('Exclusion deleted.');
     return;
   }
   if (action === 'edit-excluded') { editingRuleId = id; render(); return; }
@@ -437,17 +456,40 @@ async function lockRule(id) {
   toast(`Locked until ${formatDate(until)}.`);
 }
 
-async function cancelRemoval(id) {
+async function cancelPause(id) {
   const rule = state.blocked.find((r) => r.id === id);
   if (!rule) return;
-  rule.pendingRemoval = null;
+  rule.pendingPause = null;
+  delete rule.pendingRemoval;
   await save();
   chrome.alarms.clear(ALARM_COUNTDOWN_PREFIX + id);
-  toast('Removal cancelled.');
+  chrome.alarms.clear(LEGACY_ALARM_COUNTDOWN_PREFIX + id);
+  toast('Pause cancelled.');
+}
+
+async function resumeRule(id) {
+  const rule = state.blocked.find((r) => r.id === id);
+  if (!rule) return;
+  rule.paused = false;
+  rule.pendingPause = null;
+  delete rule.pendingRemoval;
+  await save();
+  chrome.alarms.clear(ALARM_COUNTDOWN_PREFIX + id);
+  chrome.alarms.clear(LEGACY_ALARM_COUNTDOWN_PREFIX + id);
+  toast('Rule resumed.');
+}
+
+async function deleteBlockedRule(id) {
+  state.blocked = state.blocked.filter((r) => r.id !== id);
+  await save();
+  chrome.alarms.clear(ALARM_LOCK_PREFIX + id);
+  chrome.alarms.clear(ALARM_COUNTDOWN_PREFIX + id);
+  chrome.alarms.clear(LEGACY_ALARM_COUNTDOWN_PREFIX + id);
+  toast('Rule deleted.');
 }
 
 ////////////////////////////////////////////////////////////////////////////
-// Reflection modal (shared for both removal steps)
+// Reflection modal (shared for both pause steps)
 ////////////////////////////////////////////////////////////////////////////
 
 const modal = document.getElementById('reflectModal');
@@ -459,8 +501,8 @@ const reflectCancel = document.getElementById('reflectCancel');
 function openReflectModal(ruleId, step) {
   pendingReflect = { ruleId, step };
   reflectTitle.textContent = step === 1
-    ? 'Why are you removing this rule?'
-    : 'Final check — why are you removing this rule?';
+    ? 'Why are you pausing this rule?'
+    : 'Final check — why are you pausing this rule?';
   reflectInput.value = '';
   reflectConfirm.disabled = true;
   modal.hidden = false;
@@ -489,16 +531,20 @@ reflectConfirm.addEventListener('click', async () => {
 
   if (step === 1) {
     const now = Date.now();
-    const readyAt = now + REMOVAL_COUNTDOWN_MS;
-    rule.pendingRemoval = { stage: 'countdown', reason1: reason, startedAt: now, readyAt };
+    const readyAt = now + PAUSE_COUNTDOWN_MS;
+    rule.pendingPause = { stage: 'countdown', reason1: reason, startedAt: now, readyAt };
+    delete rule.pendingRemoval;
     await save();
     chrome.alarms.create(ALARM_COUNTDOWN_PREFIX + ruleId, { when: readyAt });
-    toast('Removal started. 30-minute cooling-off begins.');
+    toast('Pause started. 30-minute cooling-off begins.');
   } else {
-    state.blocked = state.blocked.filter((r) => r.id !== ruleId);
+    rule.paused = true;
+    rule.pendingPause = null;
+    delete rule.pendingRemoval;
     await save();
     chrome.alarms.clear(ALARM_COUNTDOWN_PREFIX + ruleId);
-    toast('Rule removed.');
+    chrome.alarms.clear(LEGACY_ALARM_COUNTDOWN_PREFIX + ruleId);
+    toast('Rule paused.');
   }
 
   closeReflectModal();
@@ -544,14 +590,14 @@ document.getElementById('importFile').addEventListener('change', async (e) => {
   }
 
   const ok = window.confirm(
-    'This replaces your current BLOCKED and EXCLUDED lists entirely (locks and pending removals will be cleared). Continue?'
+    'This replaces your current BLOCKED and EXCLUDED lists entirely (locks and pending pauses will be cleared). Continue?'
   );
   if (!ok) { e.target.value = ''; return; }
 
   state.blocked = (parsed.BLOCKED || []).map(([domain, substring, message]) => ({
     id: crypto.randomUUID(),
     domain: domain || '', substring: substring || '', message: message || '',
-    locked: false, lockedUntil: null, pendingRemoval: null
+    locked: false, lockedUntil: null, paused: false, pendingPause: null
   }));
   state.excluded = (parsed.EXCLUDED || []).map(([domain, substring]) => ({
     id: crypto.randomUUID(), domain: domain || '', substring: substring || ''

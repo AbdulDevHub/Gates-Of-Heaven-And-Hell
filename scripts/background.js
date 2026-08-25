@@ -3,13 +3,14 @@
 //   1. Seed chrome.storage.local from bundled bookOfLinks.jsonc on first install.
 //   2. Compile stored BLOCKED/EXCLUDED rules into declarativeNetRequest dynamic rules
 //      whenever storage changes.
-//   3. Reconcile lock-expiry and removal-countdown alarms (survives worker restarts).
+//   3. Reconcile lock-expiry and pause-countdown alarms (survives worker restarts).
 
 importScripts('rules-engine.js');
 
 const ALARM_LOCK_PREFIX = 'lock:';
-const ALARM_COUNTDOWN_PREFIX = 'removalCountdown:';
-const REMOVAL_COUNTDOWN_MS = 30 * 60 * 1000; // 30 minutes
+const ALARM_COUNTDOWN_PREFIX = 'pauseCountdown:';
+const LEGACY_ALARM_COUNTDOWN_PREFIX = 'removalCountdown:';
+const PAUSE_COUNTDOWN_MS = 30 * 60 * 1000; // 30 minutes
 
 let isRebuilding = false; // Prevents overlapping calls from racing on rule IDs
 let rebuildQueued = false; // If a change arrives mid-rebuild, don't drop it — rerun after
@@ -65,7 +66,8 @@ function makeBlockedRule([domain, substring, message] = []) {
     message: message || '',
     locked: false,
     lockedUntil: null,
-    pendingRemoval: null
+    paused: false,
+    pendingPause: null
   };
 }
 
@@ -116,7 +118,9 @@ async function rebuildDnrRules() {
     }
 
     // BLOCKED — redirect to the extension's blocked page carrying ruleId & original URL.
+    // Paused rules are skipped so they do not block traffic.
     for (const rule of blocked) {
+      if (rule.paused) continue;
       const regexFilter = self.RulesEngine.buildRegexFilter(rule.domain, rule.substring);
       if (!regexFilter) continue;
       newRules.push({
@@ -166,7 +170,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
 
     const filtersChanged = newBlocked.some((rule, i) => {
       const match = oldBlocked[i];
-      return !match || rule.domain !== match.domain || rule.substring !== match.substring;
+      return !match || rule.domain !== match.domain || rule.substring !== match.substring || Boolean(rule.paused) !== Boolean(match.paused);
     });
 
     if (filtersChanged) {
@@ -176,7 +180,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
 });
 
 ////////////////////////////////////////////////////////////////////////////
-// Alarms — lock expiry + removal countdown reconciliation
+// Alarms — lock expiry + pause countdown reconciliation
 ////////////////////////////////////////////////////////////////////////////
 
 async function reconcileAllAlarms() {
@@ -194,12 +198,15 @@ async function reconcileAllAlarms() {
         chrome.alarms.create(ALARM_LOCK_PREFIX + rule.id, { when: rule.lockedUntil });
       }
     }
-    if (rule.pendingRemoval && rule.pendingRemoval.stage === 'countdown') {
-      if (rule.pendingRemoval.readyAt <= now) {
-        rule.pendingRemoval.stage = 'ready';
+    const pp = rule.pendingPause || rule.pendingRemoval;
+    if (pp && pp.stage === 'countdown') {
+      if (pp.readyAt <= now) {
+        pp.stage = 'ready';
+        rule.pendingPause = pp;
+        delete rule.pendingRemoval;
         stateModified = true;
       } else {
-        chrome.alarms.create(ALARM_COUNTDOWN_PREFIX + rule.id, { when: rule.pendingRemoval.readyAt });
+        chrome.alarms.create(ALARM_COUNTDOWN_PREFIX + rule.id, { when: pp.readyAt });
       }
     }
   }
@@ -223,11 +230,20 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
     }
   }
 
+  let countdownId = null;
   if (alarm.name.startsWith(ALARM_COUNTDOWN_PREFIX)) {
-    const id = alarm.name.slice(ALARM_COUNTDOWN_PREFIX.length);
-    const rule = blocked.find((r) => r.id === id);
-    if (rule && rule.pendingRemoval && rule.pendingRemoval.stage === 'countdown') {
-      rule.pendingRemoval.stage = 'ready';
+    countdownId = alarm.name.slice(ALARM_COUNTDOWN_PREFIX.length);
+  } else if (alarm.name.startsWith(LEGACY_ALARM_COUNTDOWN_PREFIX)) {
+    countdownId = alarm.name.slice(LEGACY_ALARM_COUNTDOWN_PREFIX.length);
+  }
+
+  if (countdownId) {
+    const rule = blocked.find((r) => r.id === countdownId);
+    const pp = rule && (rule.pendingPause || rule.pendingRemoval);
+    if (pp && pp.stage === 'countdown') {
+      pp.stage = 'ready';
+      rule.pendingPause = pp;
+      delete rule.pendingRemoval;
       changed = true;
     }
   }

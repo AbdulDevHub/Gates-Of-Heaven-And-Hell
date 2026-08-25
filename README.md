@@ -1,5 +1,7 @@
 # Gates Of Heaven & Hell
 
+![Screenshot](Screenshot.png)
+
 A Manifest V3 Chrome extension version of the original Tampermonkey blocker —
 rebuilt on `declarativeNetRequest` instead of polling/click-interception, with
 a no-bypass blocked page, and lockable/friction-gated rule removal.
@@ -56,10 +58,13 @@ is not read again unless you use **Import** on the options page.
   being blocked by Chrome client security policies.
 - **Blocked page**: shows a message, no "proceed anyway" — one button,
   **Close Tab**, which shows a brief toast and closes the tab.
-- **Removing a BLOCKED rule**: type a reason → 30-minute cooling-off → type a
-  reason again → removed. **Locked** rules can't be removed at all until
+- **Pausing a BLOCKED rule**: type a reason → 30-minute cooling-off → type a
+  reason again → paused. While paused, the rule is inactive and stops blocking.
+  Click **Resume** anytime to re-enable blocking immediately.
+- **Deleting a BLOCKED rule**: click **Delete** → deleted instantly without delay.
+- **Locked rules**: hard-locked rules cannot be paused, edited, or deleted until
   their lock expires (Mon–Thu lock → unlocks Friday 6 PM, stays locked
   through the weekend; Fri/Sat/Sun lock → flat 24 hours).
-- **EXCLUDED rules**: freely, instantly editable — no friction.
+- **EXCLUDED rules**: freely, instantly editable & removable — no friction.
 - **YouTube search**: a content script catches the search form before submit,
   jumping straight to the blocked page without flashing the results page.

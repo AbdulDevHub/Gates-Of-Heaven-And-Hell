@@ -21,14 +21,15 @@ document.addEventListener('submit', async (e) => {
   const url = location.origin + '/results?search_query=' + encodeURIComponent(q);
 
   const { blocked = [], excluded = [] } = await chrome.storage.local.get(['blocked', 'excluded']);
-  const isBlocked = self.RulesEngine.isEffectivelyBlocked(url, blocked, excluded);
+  const activeBlocked = blocked.filter((r) => !r.paused);
+  const isBlocked = self.RulesEngine.isEffectivelyBlocked(url, activeBlocked, excluded);
 
   if (isBlocked) {
     e.preventDefault();
     e.stopImmediatePropagation();
 
     const parts = self.RulesEngine.getUrlParts(url);
-    const matchingRule = blocked.find((r) => self.RulesEngine.ruleMatches(parts, [r.domain, r.substring]));
+    const matchingRule = activeBlocked.find((r) => self.RulesEngine.ruleMatches(parts, [r.domain, r.substring]));
     const ruleParam = matchingRule ? `&ruleId=${encodeURIComponent(matchingRule.id)}` : '';
     location.href = chrome.runtime.getURL(`pages/blocked.html?url=${encodeURIComponent(url)}${ruleParam}`);
   }

@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Gates Of Heaven & Hell",
   "version": "1.0.0",
-  "description": "A rule-based site blocker with no bypass, delayed & reflection-gated rule removal, and lockable rules.",
+  "description": "A rule-based site blocker with no bypass, delayed & reflection-gated rule pausing, instant deletion, and lockable rules.",
   "incognito": "split",
   "permissions": [
     "storage",

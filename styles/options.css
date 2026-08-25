@@ -219,6 +219,7 @@ html, body {
 }
 
 .rule-row.is-locked { border-color: rgba(139, 46, 46, 0.55); }
+.rule-row.is-paused { opacity: 0.85; border-style: dashed; }
 
 .rule-main { flex: 1; min-width: 0; }
 
@@ -266,6 +267,7 @@ html, body {
 .badge-locked { background: rgba(139, 46, 46, 0.18); color: var(--ember-bright); }
 .badge-countdown { background: rgba(201, 162, 39, 0.15); color: var(--gold-bright); }
 .badge-ready { background: rgba(201, 162, 39, 0.3); color: var(--gold-bright); }
+.badge-paused { background: rgba(136, 148, 163, 0.2); color: var(--mist); }
 
 .rule-actions { display: flex; align-items: center; gap: 0.4rem; flex-shrink: 0; }
 
