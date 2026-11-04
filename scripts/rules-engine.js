@@ -26,6 +26,21 @@
   // it must also appear anywhere in the full URL.
   // ---------------------------------------------------------------------
 
+
+  // Google search rules should only look at the query text (q=), not the long
+  // opaque tracking params (fbs, sxsrf, ved...) that Google's AI mode adds.
+  function isSearchRule(domain) {
+    return /google\.[a-z.]+\/search/.test(domain);
+  }
+
+  function substringHaystack(full, domain) {
+    if (!isSearchRule(domain)) return full;
+    const m = full.match(/[?&]q=([^&#]*)/);
+    if (!m) return '';
+    const raw = m[1].replace(/\+/g, ' ');
+    try { return decodeURIComponent(raw).toLowerCase(); } catch { return raw; }
+  }
+
   function ruleMatches(urlParts, rule) {
     let domain = '';
     let sub = '';
@@ -43,7 +58,7 @@
     if (!hostMatch) return false;
 
     if (!sub) return true;
-    return urlParts.full.includes(sub);
+    return substringHaystack(urlParts.full, domain).includes(sub);
   }
 
   function findMatchingRule(url, rules) {
@@ -91,7 +106,13 @@
     const d = escapeRegex((domain || '').toLowerCase());
     if (!d) return null;
     const s = (substring || '').trim();
-    const pattern = s ? `${d}.*${escapeRegex(s.toLowerCase())}` : d;
+    let pattern = d;
+    if (s) {
+      const sp = escapeRegex(s.toLowerCase()).replace(/ /g, '(?:\\+|%20| )');
+      pattern = isSearchRule((domain || '').toLowerCase())
+        ? `${d}.*[?&]q=[^&#]*${sp}`
+        : `${d}.*${sp}`;
+    }
     return `(?i)^(https?://.*${pattern}.*)`;
   }
 
