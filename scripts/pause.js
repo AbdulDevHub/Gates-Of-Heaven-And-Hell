@@ -1,7 +1,7 @@
 // pause.js — Pause & Think reflection gate.
 // Runs as an extension page (chrome-extension:// origin).
 
-const REQUIRED_CONFIRMATION = 'yes i am sure';
+const REQUIRED_CONFIRMATION = 'Yes I Am Sure';
 const PAUSE_DURATION_MS = 15 * 1000; // 15 seconds
 
 const AFFIRMATIONS = [
@@ -57,7 +57,7 @@ function unlockInput() {
 }
 
 confirmInput.addEventListener('input', () => {
-  const val = confirmInput.value.trim().toLowerCase();
+  const val = confirmInput.value.trim();
   const isMatch = val === REQUIRED_CONFIRMATION;
 
   continueBtn.disabled = !isMatch;
@@ -70,7 +70,7 @@ confirmInput.addEventListener('input', () => {
 
 document.getElementById('pauseForm').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const val = confirmInput.value.trim().toLowerCase();
+  const val = confirmInput.value.trim();
   if (val !== REQUIRED_CONFIRMATION) return;
 
   confirmInput.disabled = true;
