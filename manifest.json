@@ -1,13 +1,15 @@
 {
   "manifest_version": 3,
   "name": "Gates Of Heaven & Hell",
-  "version": "1.0.0",
-  "description": "A rule-based site blocker with no bypass, delayed & reflection-gated rule pausing, instant deletion, and lockable rules.",
+  "version": "2.0.0",
+  "description": "A no-bypass website blocker: Hell gates for blocked sites, Pause & Think gates for habits, schedules, lockable rules and streaks.",
+  "homepage_url": "https://github.com/AbdulDevHub/Gates-Of-Heaven-And-Hell",
   "incognito": "split",
   "permissions": [
     "storage",
     "alarms",
     "tabs",
+    "webNavigation",
     "declarativeNetRequest"
   ],
   "host_permissions": [
@@ -21,7 +23,8 @@
     "open_in_tab": true
   },
   "action": {
-    "default_title": "Gates Of Heaven & Hell — Open Rule Book",
+    "default_title": "Gates Of Heaven & Hell",
+    "default_popup": "pages/popup.html",
     "default_icon": {
       "16": "icons/icon16.png",
       "32": "icons/icon32.png",
@@ -47,12 +50,17 @@
     {
       "resources": [
         "pages/blocked.html",
-        "styles/blocked.css",
-        "scripts/blocked.js",
         "pages/pause.html",
+        "styles/blocked.css",
         "styles/pause.css",
+        "styles/heaven.css",
+        "scripts/blocked.js",
         "scripts/pause.js",
-        "scripts/rules-engine.js"
+        "scripts/heaven.js",
+        "scripts/reminders.js",
+        "scripts/shared.js",
+        "scripts/rules-engine.js",
+        "icons/icon32.png"
       ],
       "matches": ["<all_urls>"]
     }

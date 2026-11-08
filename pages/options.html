@@ -2,16 +2,26 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Gates Of Heaven & Hell — Rule Book</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Rule Book — Gates Of Heaven &amp; Hell</title>
+<link rel="icon" href="../icons/icon32.png" />
 <link rel="stylesheet" href="../styles/options.css" />
 </head>
 <body>
 
   <header class="topbar">
     <div class="topbar-title">
-      <p class="eyebrow">Gates Of Heaven &amp; Hell</p>
-      <h1>Rule Book</h1>
+      <img class="brand-icon" src="../icons/icon192.png" alt="" width="36" height="36" />
+      <div>
+        <p class="eyebrow">Gates Of Heaven &amp; Hell</p>
+        <h1>Rule Book</h1>
+      </div>
     </div>
+    <nav class="tabs" role="tablist" aria-label="Rule Book sections">
+      <button class="tab" role="tab" type="button" data-tab="rules" aria-selected="true">Rules</button>
+      <button class="tab" role="tab" type="button" data-tab="journey" aria-selected="false">Journey</button>
+      <button class="tab" role="tab" type="button" data-tab="settings" aria-selected="false">Settings</button>
+    </nav>
     <div class="topbar-actions">
       <input type="file" id="importFile" accept=".json,.jsonc" hidden />
       <button id="importBtn" class="btn btn-ghost" type="button">Import</button>
@@ -21,62 +31,169 @@
 
   <main class="wrap">
 
-    <section class="panel">
-      <div class="panel-head">
-        <h2>Blocked</h2>
-        <p class="panel-sub">Matches close the gate. Pausing requires reflection twice and a 30-minute wait — or is impossible entirely while locked.</p>
+    <!-- ============================== RULES ============================== -->
+    <section id="tab-rules" class="tab-panel" role="tabpanel">
+
+      <div class="tools-card">
+        <form id="testerForm" class="tester">
+          <label class="sr-only" for="testerUrl">URL to test</label>
+          <input type="text" id="testerUrl" placeholder="Test a URL: will it be gated, and why?" autocomplete="off" spellcheck="false" />
+          <button type="submit" class="btn btn-gold">Test</button>
+        </form>
+        <div id="testerResult" class="tester-result" hidden></div>
+        <div class="filter-row">
+          <label class="sr-only" for="filterInput">Filter rules</label>
+          <input type="search" id="filterInput" placeholder="Filter rules by site, word, note or message…" autocomplete="off" />
+          <div id="ruleCounts" class="chips" aria-live="polite"></div>
+        </div>
       </div>
 
-      <form id="blockedForm" class="add-form">
-        <input type="text" id="blockedDomain" placeholder="domain, e.g. youtube.com" required />
-        <input type="text" id="blockedSubstring" placeholder="substring (optional), e.g. shorts" />
-        <input type="text" id="blockedMessage" placeholder="custom message (optional)" />
-        <button type="submit" class="btn btn-gold">Add</button>
-      </form>
+      <section class="panel" data-list="blocked">
+        <div class="panel-head">
+          <h2><span class="dot dot-hell" aria-hidden="true"></span>Blocked <span class="count" id="blockedCount"></span></h2>
+          <p class="panel-sub">The Hell gate. Matches are stopped before the page loads, with no way through. Pausing takes two reflections and a cooldown, and locked rules can't be touched at all.</p>
+        </div>
+        <form id="blockedForm" class="add-form">
+          <input type="text" id="blockedDomain" list="domainList" placeholder="site, e.g. youtube.com" required autocomplete="off" />
+          <input type="text" id="blockedSubstring" placeholder="word in URL (optional), e.g. shorts" autocomplete="off" />
+          <input type="text" id="blockedMessage" placeholder="message on the gate (optional)" autocomplete="off" />
+          <button type="submit" class="btn btn-gold">Add</button>
+        </form>
+        <ul id="blockedList" class="rule-list"></ul>
+        <p id="blockedEmpty" class="empty-state" hidden>No blocked rules yet.</p>
+      </section>
 
-      <ul id="blockedList" class="rule-list"></ul>
-      <p id="blockedEmpty" class="empty-state" hidden>No blocked rules yet.</p>
+      <section class="panel" data-list="pauseAndThink">
+        <div class="panel-head">
+          <h2><span class="dot dot-pause" aria-hidden="true"></span>Pause &amp; Think <span class="count" id="pauseAndThinkCount"></span></h2>
+          <p class="panel-sub">The crossroads. Matches show a reflection wait, then you type <code>Yes I Am Sure</code> to go through, or turn back. Freely editable.</p>
+        </div>
+        <form id="pauseAndThinkForm" class="add-form">
+          <input type="text" id="pauseAndThinkDomain" list="domainList" placeholder="site, e.g. reddit.com" required autocomplete="off" />
+          <input type="text" id="pauseAndThinkSubstring" placeholder="word in URL (optional), e.g. /r/popular" autocomplete="off" />
+          <input type="text" id="pauseAndThinkNote" placeholder="note on the gate (optional)" autocomplete="off" />
+          <button type="submit" class="btn btn-gold">Add</button>
+        </form>
+        <ul id="pauseAndThinkList" class="rule-list"></ul>
+        <p id="pauseAndThinkEmpty" class="empty-state" hidden>No Pause &amp; Think rules yet.</p>
+      </section>
+
+      <section class="panel" data-list="excluded">
+        <div class="panel-head">
+          <h2><span class="dot dot-heaven" aria-hidden="true"></span>Exceptions <span class="count" id="excludedCount"></span></h2>
+          <p class="panel-sub">Always allowed, even when a Blocked or Pause &amp; Think rule also matches. Freely editable.</p>
+        </div>
+        <form id="excludedForm" class="add-form">
+          <input type="text" id="excludedDomain" list="domainList" placeholder="site, e.g. youtube.com" required autocomplete="off" />
+          <input type="text" id="excludedSubstring" placeholder="word in URL (optional), e.g. recipe" autocomplete="off" />
+          <input type="text" id="excludedNote" placeholder="note (optional)" autocomplete="off" />
+          <button type="submit" class="btn btn-gold">Add</button>
+        </form>
+        <ul id="excludedList" class="rule-list"></ul>
+        <p id="excludedEmpty" class="empty-state" hidden>No exceptions yet.</p>
+      </section>
+
+      <datalist id="domainList"></datalist>
     </section>
 
-    <section class="panel">
+    <!-- ============================== JOURNEY ============================== -->
+    <section id="tab-journey" class="tab-panel" role="tabpanel" hidden>
       <div class="panel-head">
-        <h2>Pause &amp; Think</h2>
-        <p class="panel-sub">Matches prompt a 15-second reflection gate before allowing access. Freely editable — no friction.</p>
+        <h2>Your Journey</h2>
+        <p class="panel-sub">Counted on this device only. A gate is "held" when a Blocked page stops you or you turn back at a Pause &amp; Think gate. A "slip" is going through a gate or pausing a Blocked rule.</p>
       </div>
-
-      <form id="pauseAndThinkForm" class="add-form">
-        <input type="text" id="pauseAndThinkDomain" placeholder="domain, e.g. reddit.com" required />
-        <input type="text" id="pauseAndThinkSubstring" placeholder="substring (optional), e.g. /r/popular" />
-        <button type="submit" class="btn btn-gold">Add</button>
-      </form>
-
-      <ul id="pauseAndThinkList" class="rule-list"></ul>
-      <p id="pauseAndThinkEmpty" class="empty-state" hidden>No Pause &amp; Think rules yet.</p>
+      <div class="tiles" id="journeyTiles"></div>
+      <div class="chart-card">
+        <div class="chart-head">
+          <h3>Last 30 days</h3>
+          <div class="legend">
+            <span><i class="swatch swatch-held"></i>Gates held</span>
+            <span><i class="swatch swatch-slip"></i>Slips</span>
+          </div>
+        </div>
+        <div id="journeyChart" class="chart"></div>
+        <div id="chartTip" class="chart-tip" hidden></div>
+        <details class="table-view">
+          <summary>Show as table</summary>
+          <div id="journeyTable"></div>
+        </details>
+      </div>
     </section>
 
-    <section class="panel">
-      <div class="panel-head">
-        <h2>Excluded</h2>
-        <p class="panel-sub">Exclusions always win over blocked rules, unconditionally. Freely editable — no friction.</p>
-      </div>
+    <!-- ============================== SETTINGS ============================== -->
+    <section id="tab-settings" class="tab-panel" role="tabpanel" hidden>
+      <form id="settingsForm" class="settings" autocomplete="off">
 
-      <form id="excludedForm" class="add-form">
-        <input type="text" id="excludedDomain" placeholder="domain, e.g. youtube.com" required />
-        <input type="text" id="excludedSubstring" placeholder="substring (optional), e.g. /watch" />
-        <button type="submit" class="btn btn-gold">Add</button>
+        <fieldset class="setting-group">
+          <legend>Gate reminders</legend>
+          <p class="panel-sub">The lines shown on the gates and when you turn back.</p>
+          <label class="radio"><input type="radio" name="reminderStyle" value="universal" /> <span><strong>Universal</strong> reflective lines for anyone</span></label>
+          <label class="radio"><input type="radio" name="reminderStyle" value="faith" /> <span><strong>Faith-based</strong> Islamic reminders</span></label>
+        </fieldset>
+
+        <fieldset class="setting-group">
+          <legend>Pause &amp; Think</legend>
+          <label class="field">
+            <span>Reflection wait</span>
+            <span class="input-unit"><input type="number" name="pauseWaitSeconds" min="3" max="300" /> seconds</span>
+          </label>
+          <label class="field">
+            <span>After going through, the pass lasts</span>
+            <select name="passMode">
+              <option value="activity">while I stay on the site</option>
+              <option value="fixed">a fixed time</option>
+              <option value="endOfDay">until the end of today</option>
+            </select>
+          </label>
+          <label class="field" data-show-for="activity">
+            <span>Pass ends after leaving the site for</span>
+            <span class="input-unit"><input type="number" name="passGraceMinutes" min="1" max="120" /> min</span>
+          </label>
+          <label class="field" data-show-for="fixed">
+            <span>Fixed pass length</span>
+            <span class="input-unit"><input type="number" name="passFixedMinutes" min="1" max="720" /> min</span>
+          </label>
+          <p class="hint">Each Pause &amp; Think rule can override these in its Edit form. When a pass ends, open tabs on that site return to the gate.</p>
+        </fieldset>
+
+        <fieldset class="setting-group">
+          <legend>Blocked rules</legend>
+          <label class="field">
+            <span>Cooldown before a rule can be paused</span>
+            <span class="input-unit"><input type="number" id="cooldownInput" min="5" max="1440" /> min</span>
+          </label>
+          <button type="button" id="cooldownApply" class="btn btn-gold btn-small">Apply cooldown</button>
+          <p class="hint" id="cooldownStatus"></p>
+          <p class="hint">Longer cooldowns apply at once. A shorter one only takes effect after the current cooldown has passed, so it can't be used as a shortcut.</p>
+        </fieldset>
+
+        <fieldset class="setting-group">
+          <legend>Journey</legend>
+          <label class="field">
+            <span>Time reclaimed per gate held (estimate)</span>
+            <span class="input-unit"><input type="number" name="minutesPerGate" min="1" max="120" /> min</span>
+          </label>
+        </fieldset>
       </form>
-
-      <ul id="excludedList" class="rule-list"></ul>
-      <p id="excludedEmpty" class="empty-state" hidden>No exclusions yet.</p>
     </section>
 
   </main>
 
-  <!-- Reflection modal (shared, reused for both removal steps) -->
+  <!-- Reflection modal (shared by both pause steps) -->
   <div id="reflectModal" class="modal-backdrop" hidden>
-    <div class="modal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="reflectTitle">
       <h3 id="reflectTitle">&nbsp;</h3>
+      <p id="reflectSub" class="modal-sub"></p>
       <textarea id="reflectInput" rows="4" placeholder="Type your reason…"></textarea>
+      <label id="pauseLengthRow" class="field" hidden>
+        <span>Pause for</span>
+        <select id="pauseLength">
+          <option value="15">15 minutes</option>
+          <option value="60" selected>1 hour</option>
+          <option value="eod">until the end of today</option>
+          <option value="manual">until I resume it</option>
+        </select>
+      </label>
       <div class="modal-actions">
         <button id="reflectCancel" class="btn btn-ghost" type="button">Cancel</button>
         <button id="reflectConfirm" class="btn btn-ember" type="button" disabled>Confirm</button>
@@ -84,8 +201,12 @@
     </div>
   </div>
 
-  <div id="toast" class="toast"></div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
+  <script src="../scripts/rules-engine.js"></script>
+  <script src="../scripts/shared.js"></script>
   <script src="../scripts/options.js"></script>
+  <script src="../scripts/options-journey.js"></script>
+  <script src="../scripts/options-settings.js"></script>
 </body>
 </html>

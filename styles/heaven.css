@@ -1,0 +1,171 @@
+/* heaven.css — the walk-away transition (see scripts/heaven.js). */
+
+.heaven {
+  --pearl: #fffaf0;
+  --halo: #f3e3a6;
+  --halo-gold: #e8c158;
+  --heaven-ink: #3a2e12;
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  pointer-events: all;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+.heaven.is-open { opacity: 1; }
+
+.heaven-light {
+  position: absolute;
+  inset: -20%;
+  background:
+    radial-gradient(circle at 50% 46%, #ffffff 0%, var(--pearl) 18%, var(--halo) 42%, #c9a227 75%, #6d5310 100%);
+  transform: scale(0.2);
+  border-radius: 50%;
+  transition: transform 1.4s cubic-bezier(0.2, 0.7, 0.2, 1), border-radius 1.4s ease;
+}
+.heaven.is-open .heaven-light { transform: scale(1.6); border-radius: 0; }
+
+.heaven-rays {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: 220vmax;
+  height: 220vmax;
+  transform: translate(-50%, -50%);
+  background: repeating-conic-gradient(from 0deg, rgba(255, 255, 255, 0.28) 0deg 4deg, transparent 4deg 15deg);
+  -webkit-mask: radial-gradient(circle, #000 0%, transparent 55%);
+  mask: radial-gradient(circle, #000 0%, transparent 55%);
+  opacity: 0;
+  transition: opacity 1.2s ease 0.4s;
+  animation: heaven-spin 40s linear infinite;
+}
+.heaven.is-open .heaven-rays { opacity: 1; }
+@keyframes heaven-spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+
+/* Pearl gates */
+.heaven-gate {
+  position: absolute;
+  top: 46%;
+  left: 50%;
+  width: min(440px, 80vw);
+  height: min(520px, 62vh);
+  transform: translate(-50%, -50%);
+  perspective: 1200px;
+}
+.hg-glow {
+  position: absolute;
+  inset: 8% 10% 0;
+  background: radial-gradient(ellipse at 50% 60%, #fff 0%, rgba(255, 255, 255, 0.7) 40%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.9s ease 0.9s;
+}
+.heaven.is-open .hg-glow { opacity: 1; }
+
+.hg-arch {
+  position: absolute;
+  inset: 0 -6% auto;
+  height: 42%;
+  border: 6px solid var(--halo-gold);
+  border-bottom: 0;
+  border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+  box-shadow: 0 0 40px rgba(255, 244, 200, 0.9), inset 0 0 30px rgba(255, 244, 200, 0.7);
+}
+
+.hg-leaf {
+  position: absolute;
+  top: 20%;
+  bottom: 0;
+  width: 50%;
+  display: flex;
+  justify-content: space-evenly;
+  background: linear-gradient(180deg, rgba(255, 250, 240, 0.35), rgba(243, 227, 166, 0.15));
+  border: 3px solid var(--halo-gold);
+  box-shadow: 0 0 24px rgba(255, 240, 190, 0.8);
+  transition: transform 1.6s cubic-bezier(0.3, 0.1, 0.2, 1) 0.7s;
+}
+.hg-left { left: 0; transform-origin: left center; border-radius: 6px 0 0 6px; }
+.hg-right { right: 0; transform-origin: right center; border-radius: 0 6px 6px 0; }
+.heaven.is-open .hg-left { transform: rotateY(-78deg); }
+.heaven.is-open .hg-right { transform: rotateY(78deg); }
+
+.hg-bar {
+  width: 6px;
+  height: 100%;
+  background: linear-gradient(90deg, #d8b54a, #fff6d6, #d8b54a);
+  border-radius: 3px;
+}
+.hg-ring {
+  position: absolute;
+  top: 46%;
+  width: 26px;
+  height: 26px;
+  border: 4px solid #fff3c4;
+  border-radius: 50%;
+  box-shadow: 0 0 12px #fff3c4;
+}
+.hg-left .hg-ring { right: 10px; }
+.hg-right .hg-ring { left: 10px; }
+
+/* Rising motes of light */
+.heaven-motes { position: absolute; inset: 0; pointer-events: none; }
+.heaven-motes i {
+  position: absolute;
+  bottom: -10px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 10px 2px rgba(255, 245, 205, 0.9);
+  opacity: 0;
+  animation: heaven-rise linear infinite;
+}
+@keyframes heaven-rise {
+  0% { transform: translateY(0); opacity: 0; }
+  15% { opacity: 1; }
+  100% { transform: translateY(-105vh); opacity: 0; }
+}
+
+.heaven-text {
+  position: relative;
+  z-index: 2;
+  margin-top: min(60vh, 520px);
+  text-align: center;
+  padding: 0 1.25rem;
+  color: var(--heaven-ink);
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 0.8s ease 1s, transform 0.8s ease 1s;
+}
+.heaven.is-open .heaven-text { opacity: 1; transform: translateY(0); }
+.heaven-eyebrow {
+  margin: 0 0 0.4rem;
+  font: 600 0.72rem/1 'Inter', system-ui, sans-serif;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: #7a5c0c;
+}
+.heaven-title {
+  margin: 0;
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-weight: 700;
+  font-size: clamp(1.6rem, 4vw, 2.4rem);
+  line-height: 1.2;
+  text-shadow: 0 1px 20px rgba(255, 255, 255, 0.8);
+}
+.heaven-sub { margin: 0.6rem 0 0; font: 500 0.95rem 'Inter', system-ui, sans-serif; color: #5a4510; }
+.heaven-closing { margin: 0.9rem 0 0; font: 0.78rem 'Inter', system-ui, sans-serif; color: #7a5c0c; opacity: 0.8; }
+
+@media (max-height: 640px) {
+  .heaven-gate { height: 46vh; top: 36%; }
+  .heaven-text { margin-top: 52vh; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .heaven, .heaven * { transition-duration: 0.01s !important; transition-delay: 0s !important; animation: none !important; }
+  .heaven-motes { display: none; }
+  .heaven .hg-leaf { transform: none !important; opacity: 0.5; }
+}

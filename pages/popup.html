@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Gates Of Heaven &amp; Hell</title>
+<link rel="stylesheet" href="../styles/popup.css" />
+</head>
+<body>
+  <header class="head">
+    <img src="../icons/icon32.png" alt="" width="22" height="22" />
+    <span class="brand">Gates Of Heaven &amp; Hell</span>
+  </header>
+
+  <section class="site-card" id="siteCard">
+    <p class="site-host" id="siteHost">This page</p>
+    <p class="verdict" id="verdict"></p>
+    <p class="reason" id="reason"></p>
+    <ul class="notes" id="notes" hidden></ul>
+  </section>
+
+  <section class="actions" id="actions" hidden>
+    <button class="act act-hell" type="button" data-list="blocked">
+      <span class="act-title">Block this site</span><span class="act-sub">Hell gate, no way through</span>
+    </button>
+    <button class="act act-pause" type="button" data-list="pauseAndThink">
+      <span class="act-title">Pause &amp; Think</span><span class="act-sub">Reflect before going in</span>
+    </button>
+    <button class="act act-heaven" type="button" data-list="excluded">
+      <span class="act-title">Always allow this page</span><span class="act-sub">An exception that always wins</span>
+    </button>
+  </section>
+
+  <section class="passes" id="passesSection" hidden>
+    <h2>Open passes</h2>
+    <ul id="passes"></ul>
+  </section>
+
+  <section class="today" id="today"></section>
+
+  <footer class="foot">
+    <button class="link" type="button" data-open="rules">Rule Book</button>
+    <button class="link" type="button" data-open="journey">Journey</button>
+    <button class="link" type="button" data-open="settings">Settings</button>
+  </footer>
+
+  <script src="../scripts/rules-engine.js"></script>
+  <script src="../scripts/shared.js"></script>
+  <script src="../scripts/popup.js"></script>
+</body>
+</html>

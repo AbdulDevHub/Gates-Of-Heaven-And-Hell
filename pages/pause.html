@@ -4,55 +4,63 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Pause &amp; Think — Gates Of Heaven &amp; Hell</title>
+<link rel="icon" href="../icons/icon32.png" />
 <link rel="stylesheet" href="../styles/pause.css" />
+<link rel="stylesheet" href="../styles/heaven.css" />
 </head>
 <body>
 
-  <div class="stage">
+  <div class="sky" aria-hidden="true">
+    <div class="stars"></div>
+    <div class="horizon"></div>
+  </div>
 
-    <div class="gate">
-      <div class="gate-arch"></div>
-      <div class="gate-leaf left">
-        <div class="gate-ring"></div>
-        <div class="gate-grain"></div>
-      </div>
-      <div class="gate-leaf right">
-        <div class="gate-ring"></div>
-        <div class="gate-grain"></div>
-      </div>
-      <div class="gate-seam"></div>
+  <main class="content">
+    <p class="eyebrow">Gates Of Heaven &amp; Hell · The Crossroads</p>
+    <h1 class="title">Are You Sure You Want To Continue?</h1>
+    <p id="prompt" class="prompt"></p>
+    <p class="site"><span id="siteHost" class="site-host"></span><span id="note" class="note" hidden></span></p>
+
+    <div class="paths">
+      <section class="path path-heaven" aria-labelledby="heavenTitle">
+        <div class="gate gate-heaven" aria-hidden="true">
+          <span class="arch"></span><span class="leaf l"></span><span class="leaf r"></span><span class="glow"></span>
+        </div>
+        <h2 id="heavenTitle">Turn Back</h2>
+        <p class="path-sub">Close this tab and keep the hour yours.</p>
+        <button id="closeTabBtn" class="btn-heaven" type="button">Turn Back</button>
+      </section>
+
+      <section class="path path-onward" aria-labelledby="onwardTitle">
+        <div class="gate gate-onward" aria-hidden="true">
+          <span class="arch"></span><span class="leaf l"></span><span class="leaf r"></span>
+          <svg class="ring" viewBox="0 0 100 100">
+            <circle class="ring-track" cx="50" cy="50" r="44" />
+            <circle id="ringProgress" class="ring-progress" cx="50" cy="50" r="44" />
+          </svg>
+          <span id="ringText" class="ring-text"></span>
+        </div>
+        <h2 id="onwardTitle">Go Through</h2>
+        <p id="passInfo" class="path-sub"></p>
+        <form id="pauseForm" class="pause-form">
+          <label class="sr-only" for="confirmInput">Type Yes I Am Sure to continue</label>
+          <div id="inputWrapper" class="input-wrapper is-locked">
+            <input type="text" id="confirmInput" class="confirm-input" placeholder="Reflecting…" disabled autocomplete="off" spellcheck="false" />
+          </div>
+          <button id="continueBtn" class="btn-continue" type="submit" disabled>Continue</button>
+        </form>
+      </section>
     </div>
 
-    <main class="content" aria-live="polite">
-      <p class="eyebrow">Gates Of Heaven &amp; Hell</p>
-      <h1 id="message" class="message">Are You Sure You Want To Continue?</h1>
-      <p class="sub">Breathe. Reflect on your intention before passing through.</p>
-
-      <form id="pauseForm" class="pause-form">
-        <div id="inputWrapper" class="input-wrapper is-locked">
-          <input
-            type="text"
-            id="confirmInput"
-            class="confirm-input"
-            placeholder="Reflecting…"
-            disabled
-            autocomplete="off"
-            spellcheck="false"
-          />
-        </div>
-
-        <div class="actions">
-          <button id="closeTabBtn" class="btn-walkaway" type="button">Close Tab</button>
-          <button id="continueBtn" class="btn-continue" type="submit" disabled>Continue</button>
-        </div>
-      </form>
-    </main>
-
-  </div>
+    <p id="tally" class="tally"></p>
+  </main>
 
   <div id="toast" class="toast" role="status" aria-live="assertive"></div>
 
   <script src="../scripts/rules-engine.js"></script>
+  <script src="../scripts/shared.js"></script>
+  <script src="../scripts/reminders.js"></script>
+  <script src="../scripts/heaven.js"></script>
   <script src="../scripts/pause.js"></script>
 </body>
 </html>

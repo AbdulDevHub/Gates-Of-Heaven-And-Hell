@@ -1,236 +1,214 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Inter:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Inter:wght@400;500;600&display=swap');
+
+/* The Hell gate: an iron portcullis slams down over a fire-lit pit. */
 
 :root {
-  --ink: #0b0f14;
-  --ink-2: #12181f;
-  --ink-3: #1a222b;
-  --parchment: #ede6d6;
-  --gold: #c9a227;
-  --gold-bright: #e8c158;
+  --pit: #070203;
+  --pit-2: #1a0606;
+  --blood: #5a1208;
   --ember: #8b2e2e;
-  --mist: #6b7787;
+  --ember-bright: #c25050;
+  --flame: #ff7a2f;
+  --flame-hot: #ffb35c;
+  --iron: #1b1717;
+  --iron-hi: #3a3030;
+  --parchment: #ede6d6;
+  --ash: #a08c86;
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
 
 html, body {
-  height: 100%;
   margin: 0;
-  background: var(--ink);
+  height: 100%;
+  overflow: hidden;
+  background: var(--pit);
   color: var(--parchment);
   font-family: 'Inter', system-ui, sans-serif;
-  overflow: hidden;
+}
+
+body {
+  background:
+    radial-gradient(120% 70% at 50% 115%, var(--blood) 0%, var(--pit-2) 45%, var(--pit) 80%);
+}
+
+#embers { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; }
+
+.fire-glow {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: -20vh;
+  height: 60vh;
+  z-index: 0;
+  background: radial-gradient(60% 60% at 50% 100%, rgba(255, 122, 47, 0.45), rgba(139, 46, 46, 0.25) 45%, transparent 75%);
+  animation: flicker 3.2s ease-in-out infinite;
+}
+@keyframes flicker {
+  0%, 100% { opacity: 0.85; transform: scaleY(1); }
+  30% { opacity: 1; transform: scaleY(1.05); }
+  55% { opacity: 0.7; transform: scaleY(0.97); }
+  75% { opacity: 0.95; transform: scaleY(1.03); }
 }
 
 .stage {
   position: relative;
-  height: 100vh;
-  width: 100vw;
+  z-index: 1;
+  height: 100%;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2.75rem;
-  background:
-    radial-gradient(ellipse 60% 45% at 50% 38%, rgba(201, 162, 39, 0.10), transparent 70%),
-    var(--ink);
-  padding: 6vh 6vw;
+  padding: 1.5rem;
+}
+.stage.is-shaking { animation: shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97); }
+@keyframes shake {
+  10%, 90% { transform: translate(-1px, 2px); }
+  20%, 80% { transform: translate(3px, -2px); }
+  30%, 50%, 70% { transform: translate(-5px, 3px); }
+  40%, 60% { transform: translate(5px, -1px); }
 }
 
 /* ---------------------------------------------------------------- */
-/* The gate                                                          */
+/* Portcullis                                                        */
 /* ---------------------------------------------------------------- */
 
-.gate {
-  position: relative;
-  width: min(420px, 62vw);
-  height: min(56vh, 480px);
-  border-radius: 50% 50% 4px 4px / 22% 22% 0 0;
-  overflow: hidden;
-  box-shadow:
-    0 0 0 1px rgba(201, 162, 39, 0.35),
-    0 30px 80px -20px rgba(0, 0, 0, 0.8),
-    0 0 60px -10px rgba(201, 162, 39, 0.12);
-  flex-shrink: 0;
-}
-
-.gate-arch {
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(ellipse 90% 70% at 50% 15%, rgba(232, 193, 88, 0.35), transparent 65%),
-    linear-gradient(180deg, #2a2110 0%, var(--ink-2) 55%, var(--ink) 100%);
-}
-
-.gate-leaf {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 52%;
-  background:
-    repeating-linear-gradient(
-      90deg,
-      rgba(0, 0, 0, 0.18) 0px,
-      rgba(0, 0, 0, 0.18) 2px,
-      transparent 2px,
-      transparent 14px
-    ),
-    linear-gradient(180deg, var(--ink-3) 0%, var(--ink-2) 100%);
-  transition: transform 1.15s cubic-bezier(0.22, 0.61, 0.36, 1);
-}
-
-.gate-leaf.left {
-  left: 0;
-  transform: translateX(-105%);
-  border-right: 2px solid rgba(201, 162, 39, 0.55);
-}
-
-.gate-leaf.right {
-  right: 0;
-  transform: translateX(105%);
-  border-left: 2px solid rgba(201, 162, 39, 0.55);
-}
-
-.gate.is-closed .gate-leaf.left,
-.gate.is-closed .gate-leaf.right {
-  transform: translateX(0);
-}
-
-.gate-ring {
-  position: absolute;
-  top: 42%;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  border: 2.5px solid var(--gold);
-  box-shadow: 0 0 12px rgba(201, 162, 39, 0.5);
-  opacity: 0;
-  transition: opacity 0.5s ease 1.05s;
-}
-
-.gate.is-closed .gate-ring { opacity: 1; }
-
-.gate-leaf.left .gate-ring { right: 14%; }
-.gate-leaf.right .gate-ring { left: 14%; }
-
-.gate-grain {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, rgba(255,255,255,0.03), transparent 40%);
+.portcullis {
+  position: fixed;
+  inset: 0 0 6vh;
+  z-index: 1;
+  transform: translateY(-105%);
   pointer-events: none;
 }
-
-.gate-seam {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 50%;
-  width: 2px;
-  transform: translateX(-50%);
-  background: linear-gradient(180deg, transparent, var(--gold-bright), transparent);
-  opacity: 0;
-  transition: opacity 0.4s ease 1.1s;
-  z-index: 2;
+.portcullis.is-down {
+  transform: translateY(0);
+  transition: transform 0.62s cubic-bezier(0.55, 0, 0.9, 0.45);
 }
 
-.gate.is-closed .gate-seam { opacity: 0.9; }
+.bars {
+  position: absolute;
+  inset: 0;
+  background:
+    /* crossbars */
+    repeating-linear-gradient(180deg, transparent 0 96px, var(--iron) 96px 110px, var(--iron-hi) 110px 112px, transparent 112px 150px),
+    /* vertical bars with a fire-lit rim */
+    repeating-linear-gradient(90deg, transparent 0 52px, #0e0b0b 52px 55px, var(--iron) 55px 63px, rgba(255, 122, 47, 0.5) 63px 65px, #0e0b0b 65px 68px, transparent 68px 120px);
+  -webkit-mask: linear-gradient(180deg, #000 0%, #000 92%, transparent 100%);
+  mask: linear-gradient(180deg, #000 0%, #000 92%, transparent 100%);
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.8));
+}
+
+.spikes {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -34px;
+  height: 40px;
+  /* One iron spike under every vertical bar (bars sit at 52–68px of each 120px tile). */
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='40'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1'%3E%3Cstop offset='0' stop-color='%230e0b0b'/%3E%3Cstop offset='.55' stop-color='%233a3030'/%3E%3Cstop offset='1' stop-color='%23ff7a2f' stop-opacity='.6'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpolygon points='52,0 68,0 60,40' fill='url(%23g)'/%3E%3C/svg%3E") 0 0 / 120px 40px repeat-x;
+  filter: drop-shadow(0 4px 8px rgba(255, 122, 47, 0.35));
+}
 
 /* ---------------------------------------------------------------- */
 /* Content                                                           */
 /* ---------------------------------------------------------------- */
 
 .content {
+  position: relative;
+  z-index: 2;
+  max-width: 680px;
+  width: 100%;
   text-align: center;
-  max-width: 560px;
+  padding: 2.5rem 2rem 2rem;
+  border-radius: 18px;
+  background: radial-gradient(120% 120% at 50% 0%, rgba(26, 6, 6, 0.92), rgba(7, 2, 3, 0.94));
+  border: 1px solid rgba(194, 80, 80, 0.35);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6), 0 0 60px rgba(139, 46, 46, 0.45), inset 0 0 40px rgba(90, 18, 8, 0.5);
   opacity: 0;
-  transform: translateY(10px);
-  transition: opacity 0.7s ease 1.15s, transform 0.7s ease 1.15s;
+  transform: scale(0.96);
+  transition: opacity 0.6s ease, transform 0.6s ease;
 }
-
-.content.is-visible {
-  opacity: 1;
-  transform: translateY(0);
-}
+.content.is-visible { opacity: 1; transform: scale(1); }
 
 .eyebrow {
-  margin: 0 0 0.9rem;
-  font-size: 0.72rem;
-  letter-spacing: 0.24em;
+  margin: 0 0 1rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.32em;
   text-transform: uppercase;
-  color: var(--gold);
+  color: var(--ash);
   font-weight: 600;
+}
+
+.sealed {
+  margin: 0 0 0.75rem;
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: var(--ember-bright);
+  text-shadow: 0 0 18px rgba(255, 122, 47, 0.55);
 }
 
 .message {
+  margin: 0 0 1rem;
   font-family: 'Cormorant Garamond', Georgia, serif;
-  font-weight: 600;
-  font-size: clamp(1.7rem, 4vw, 2.5rem);
-  line-height: 1.25;
-  margin: 0 0 0.9rem;
-  color: var(--parchment);
+  font-weight: 700;
+  font-size: clamp(1.8rem, 4.4vw, 2.9rem);
+  line-height: 1.18;
+  overflow-wrap: anywhere;
+  background: linear-gradient(180deg, #fff1e0 10%, var(--flame-hot) 70%, var(--flame) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 22px rgba(255, 122, 47, 0.35));
 }
 
-.sub {
-  margin: 0 0 2rem;
-  font-size: 0.95rem;
-  color: var(--mist);
-  line-height: 1.6;
-}
+.sub { margin: 0 0 0.5rem; color: var(--ash); font-size: 0.95rem; }
 
-.close-btn {
+.target {
+  margin: 0 0 1.75rem;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 0.78rem;
+  color: rgba(237, 230, 214, 0.45);
+  overflow-wrap: anywhere;
+}
+.target:empty { display: none; }
+
+.btn-away {
   appearance: none;
-  border: 1px solid var(--gold);
-  background: transparent;
-  color: var(--gold-bright);
-  font-family: 'Inter', sans-serif;
-  font-size: 0.95rem;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  padding: 0.85rem 2.4rem;
+  border: 1px solid rgba(243, 227, 166, 0.65);
+  background: linear-gradient(180deg, rgba(243, 227, 166, 0.16), rgba(243, 227, 166, 0.04));
+  color: #fbeec2;
+  font: 600 0.95rem 'Inter', sans-serif;
+  letter-spacing: 0.08em;
+  padding: 0.9rem 2.6rem;
   border-radius: 999px;
   cursor: pointer;
-  transition: background 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
+  box-shadow: 0 0 24px rgba(243, 227, 166, 0.18);
+  transition: background 0.25s ease, box-shadow 0.25s ease, transform 0.15s ease;
 }
-
-.close-btn:hover,
-.close-btn:focus-visible {
-  background: var(--gold);
-  color: var(--ink);
-  box-shadow: 0 0 24px rgba(201, 162, 39, 0.35);
-  outline: none;
+.btn-away:hover:not(:disabled) {
+  background: linear-gradient(180deg, rgba(243, 227, 166, 0.3), rgba(243, 227, 166, 0.1));
+  box-shadow: 0 0 36px rgba(243, 227, 166, 0.4);
 }
+.btn-away:active:not(:disabled) { transform: scale(0.98); }
+.btn-away:focus-visible { outline: 2px solid #fbeec2; outline-offset: 3px; }
+.btn-away:disabled { opacity: 0.6; cursor: default; }
 
-.close-btn:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
+.tally { margin: 1.25rem 0 0; font-size: 0.8rem; color: var(--ash); }
+.tally:empty { display: none; }
 
-/* ---------------------------------------------------------------- */
-/* Toast                                                             */
-/* ---------------------------------------------------------------- */
+.is-ascending .stage, .is-ascending .portcullis { filter: blur(2px); }
 
-.toast {
-  position: fixed;
-  bottom: 8vh;
-  left: 50%;
-  transform: translateX(-50%) translateY(14px);
-  background: var(--ink-3);
-  border: 1px solid rgba(201, 162, 39, 0.45);
-  color: var(--parchment);
-  padding: 0.9rem 1.6rem;
-  border-radius: 999px;
-  font-size: 0.9rem;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.4s ease, transform 0.4s ease;
-  box-shadow: 0 12px 30px -8px rgba(0,0,0,0.6);
-}
-
-.toast.show {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
+@media (max-width: 520px) {
+  .content { padding: 2rem 1.25rem 1.5rem; }
+  .btn-away { width: 100%; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .gate-leaf, .content, .toast, .gate-ring, .gate-seam { transition-duration: 0.01ms !important; }
+  .fire-glow { animation: none; }
+  .portcullis.is-down { transition: none; }
+  .stage.is-shaking { animation: none; }
+  .content { transition: none; }
 }

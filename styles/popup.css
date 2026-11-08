@@ -1,0 +1,97 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@700&family=Inter:wght@400;500;600&display=swap');
+
+:root {
+  --ink: #0b0f14;
+  --ink-2: #12181f;
+  --ink-3: #1a222b;
+  --line: #263140;
+  --parchment: #ede6d6;
+  --gold: #c9a227;
+  --gold-bright: #e8c158;
+  --ember: #8b2e2e;
+  --ember-bright: #c25050;
+  --heaven: #f3e3a6;
+  --mist: #8894a3;
+  --mist-dim: #5c6774;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  width: 340px;
+  background: var(--ink);
+  color: var(--parchment);
+  font: 14px/1.4 'Inter', system-ui, sans-serif;
+}
+
+body { padding: 0.9rem; display: flex; flex-direction: column; gap: 0.75rem; }
+
+.head { display: flex; align-items: center; gap: 0.5rem; }
+.head img { border-radius: 5px; }
+.brand { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 700; font-size: 1.1rem; }
+
+.site-card {
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.75rem 0.85rem;
+}
+.site-host { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.verdict { margin: 0.35rem 0 0; font-size: 0.82rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.4rem; }
+.verdict:empty { display: none; }
+.verdict::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; }
+.v-hell { color: var(--ember-bright); }
+.v-pause { color: var(--gold-bright); }
+.v-pass { color: var(--heaven); }
+.v-heaven { color: var(--heaven); }
+.v-none { color: var(--mist); }
+.reason { margin: 0.3rem 0 0; font-size: 0.78rem; color: var(--mist); overflow-wrap: anywhere; }
+.notes { margin: 0.4rem 0 0; padding-left: 1rem; font-size: 0.74rem; color: #e9a07a; }
+.notes[hidden] { display: none; }
+
+.actions { display: flex; flex-direction: column; gap: 0.4rem; }
+.actions[hidden] { display: none; }
+.act {
+  appearance: none;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--ink-2);
+  color: var(--parchment);
+  cursor: pointer;
+  font: inherit;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+.act[hidden] { display: none; }
+.act:disabled { opacity: 0.7; cursor: default; }
+.act:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: 2px; }
+.act-title { font-weight: 600; font-size: 0.86rem; }
+.act-sub { font-size: 0.74rem; color: var(--mist); }
+.act-hell:hover { border-color: var(--ember-bright); background: rgba(139, 46, 46, 0.15); }
+.act-pause:hover { border-color: var(--gold); background: rgba(201, 162, 39, 0.1); }
+.act-heaven:hover { border-color: var(--heaven); background: rgba(243, 227, 166, 0.08); }
+
+.passes h2 { margin: 0 0 0.35rem; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--mist); font-weight: 600; }
+.passes[hidden] { display: none; }
+.passes ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+.passes li { display: flex; align-items: center; gap: 0.5rem; background: var(--ink-2); border: 1px solid var(--line); border-radius: 8px; padding: 0.4rem 0.5rem 0.4rem 0.7rem; font-size: 0.8rem; }
+.pass-host { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pass-time { color: var(--heaven); font-variant-numeric: tabular-nums; font-size: 0.74rem; }
+.pass-end { appearance: none; border: 1px solid var(--ember); background: transparent; color: var(--ember-bright); border-radius: 6px; font: 500 0.72rem 'Inter', sans-serif; padding: 0.2rem 0.5rem; cursor: pointer; }
+.pass-end:hover { background: var(--ember); color: var(--parchment); }
+
+.today { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem; }
+.today div { background: var(--ink-2); border: 1px solid var(--line); border-radius: 10px; padding: 0.5rem; text-align: center; display: flex; flex-direction: column; }
+.today strong { font-family: "Cormorant Garamond", Georgia, serif; font-size: 1.5rem; line-height: 1.1; font-variant-numeric: lining-nums tabular-nums; }
+.today span { font-size: 0.7rem; color: var(--mist); }
+
+.foot { display: flex; justify-content: space-between; border-top: 1px solid var(--line); padding-top: 0.6rem; }
+.link { appearance: none; border: 0; background: none; color: var(--gold-bright); font: 500 0.8rem 'Inter', sans-serif; cursor: pointer; padding: 0.2rem 0.3rem; border-radius: 4px; }
+.link:hover { text-decoration: underline; }
+.link:focus-visible { outline: 2px solid var(--gold-bright); }
