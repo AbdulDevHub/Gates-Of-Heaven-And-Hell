@@ -1,5 +1,6 @@
-// popup.js — toolbar popup: what happens on this page and why, one-click
-// rules for the current site, open passes with live timers, today's tally.
+// popup.js — toolbar popup: what happens on this page and why, quick rules
+// for the current site (site + optional "only URLs containing" text, e.g. one
+// YouTube channel) and open passes with live timers.
 
 const RE = self.RulesEngine;
 const SH = self.Shared;
@@ -14,18 +15,20 @@ const VERDICT = {
 
 let tab = null;
 let state = null;
+let pageHost = '';
+let lastVerdict = 'none';
+let fieldsFilled = false;
 
 function el(id) { return document.getElementById(id); }
 
 async function load() {
-  const s = await chrome.storage.local.get(['blocked', 'excluded', 'pauseAndThink', 'pauseSessions', 'settings', 'stats']);
+  const s = await chrome.storage.local.get(['blocked', 'excluded', 'pauseAndThink', 'pauseSessions', 'settings']);
   state = {
     blocked: s.blocked || [],
     excluded: s.excluded || [],
     pauseAndThink: s.pauseAndThink || [],
     pauseSessions: s.pauseSessions || [],
-    settings: SH.mergeSettings(s.settings),
-    stats: s.stats
+    settings: SH.mergeSettings(s.settings)
   };
 }
 
@@ -48,7 +51,10 @@ function render() {
   } else {
     const ex = RE.explainUrl(url, state, now);
     const v = VERDICT[ex.verdict];
-    el('siteHost').textContent = parts.host.replace(/^www\./, '');
+    pageHost = parts.host.replace(/^www\./, '');
+    lastVerdict = ex.verdict;
+    el('siteHost').textContent = pageHost;
+    if (!fieldsFilled) { el('qaDomain').value = pageHost; fieldsFilled = true; }
     el('verdict').textContent = v.text;
     el('verdict').className = `verdict ${v.cls}`;
     el('reason').textContent = ex.rule
@@ -64,16 +70,48 @@ function render() {
     notes.hidden = !ex.notes.length;
 
     el('actions').hidden = false;
-    document.querySelector('.act-hell').hidden = ex.verdict === 'blocked';
-    document.querySelector('.act-pause').hidden = ex.verdict === 'pause' || ex.verdict === 'pass';
-    // No one-click exception for a page that is gated right now: that would
-    // be a bypass button. Exceptions for gated pages go through the Rule Book.
-    document.querySelector('.act-heaven').hidden = ex.verdict !== 'none' && ex.verdict !== 'pass';
+    updateActions();
   }
 
   renderPasses(now);
-  renderToday(now);
 }
+
+function target() {
+  const domain = RE.normalizeDomain(el('qaDomain').value);
+  const substring = el('qaSubstring').value.trim();
+  return { domain, substring };
+}
+
+// Shows what a rule from the fields would cover and which buttons make sense.
+function updateActions() {
+  const { domain, substring } = target();
+  const preview = el('qaPreview');
+  if (!domain) preview.textContent = 'Enter a site.';
+  else if (domain === '*') preview.textContent = substring ? `Every site, URLs containing “${substring}”` : 'Every site';
+  else preview.textContent = substring ? `${domain} URLs containing “${substring}”` : `All of ${domain}`;
+  const narrowed = Boolean(substring) || domain !== RE.normalizeDomain(pageHost);
+  document.querySelector('.act-hell .act-title').textContent = narrowed ? 'Block this' : 'Block this site';
+  document.querySelector('.act-pause .act-title').textContent = 'Pause & Think';
+  document.querySelector('.act-heaven .act-title').textContent = substring ? 'Always allow these URLs' : 'Always allow this page';
+  // Hide what's already true for an un-narrowed rule on this page.
+  document.querySelector('.act-hell').hidden = !domain || (!narrowed && lastVerdict === 'blocked');
+  document.querySelector('.act-pause').hidden = !domain || (!narrowed && (lastVerdict === 'pause' || lastVerdict === 'pass'));
+  // No one-click exception for a page that is gated right now (that would be
+  // a bypass button), and none for some other site typed in here: exceptions
+  // for anything gated go through the Rule Book.
+  // With extra text, an exception could cover other gated URLs on this site
+  // (e.g. "/" on x.com), so it's only offered when no gate rule touches the host.
+  const host = RE.normalizeDomain(pageHost);
+  const hostGated = [...state.blocked, ...state.pauseAndThink].some((r) => {
+    const h = RE.normalizeDomain(r.domain).split('/')[0];
+    return h === '*' || host === h || host.endsWith(`.${h}`);
+  });
+  document.querySelector('.act-heaven').hidden =
+    lastVerdict !== 'none' || domain !== host || (Boolean(substring) && hostGated);
+}
+
+el('qaDomain').addEventListener('input', updateActions);
+el('qaSubstring').addEventListener('input', updateActions);
 
 function renderPasses(now) {
   const list = el('passes');
@@ -103,36 +141,19 @@ function renderPasses(now) {
   el('passesSection').hidden = !state.pauseSessions.length;
 }
 
-function renderToday(now) {
-  const sum = SH.summarizeStats(state.stats, now, state.settings);
-  el('today').innerHTML = '';
-  const items = [
-    [String(sum.today.held), 'held today'],
-    [String(sum.streak), sum.streak === 1 ? 'day streak' : 'days streak'],
-    [String(sum.today.slips), sum.today.slips === 1 ? 'slip today' : 'slips today']
-  ];
-  for (const [value, label] of items) {
-    const d = document.createElement('div');
-    const b = document.createElement('strong');
-    b.textContent = value;
-    const span = document.createElement('span');
-    span.textContent = label;
-    d.append(b, span);
-    el('today').appendChild(d);
-  }
-}
-
 document.querySelectorAll('.act').forEach((btn) => {
   btn.addEventListener('click', async () => {
     const url = gatedOriginal(tab.url || tab.pendingUrl);
     const u = new URL(url);
     const list = btn.dataset.list;
-    // Exceptions cover just this page (host + path); gates cover the whole site.
-    const domain = list === 'excluded'
-      ? `${u.hostname.replace(/^www\./, '')}${u.pathname.replace(/\/+$/, '')}`
-      : u.hostname.replace(/^www\./, '');
+    const t = target();
+    if (!t.domain) return;
+    // An exception without extra text covers just this page (host + path).
+    const domain = list === 'excluded' && !t.substring
+      ? `${t.domain}${u.pathname.replace(/\/+$/, '')}`
+      : t.domain;
     btn.disabled = true;
-    const res = await chrome.runtime.sendMessage({ action: 'QUICK_ADD', list, domain, substring: '', tabId: tab.id, url });
+    const res = await chrome.runtime.sendMessage({ action: 'QUICK_ADD', list, domain, substring: t.substring, tabId: tab.id, url });
     btn.querySelector('.act-sub').textContent = res && res.success ? (res.existed ? 'Already in your rules' : 'Added') : 'Could not add the rule';
     await load();
     render();

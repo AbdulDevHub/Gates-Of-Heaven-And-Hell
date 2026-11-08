@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Gates Of Heaven & Hell",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "A no-bypass website blocker: Hell gates for blocked sites, Pause & Think gates for habits, schedules, lockable rules and streaks.",
   "homepage_url": "https://github.com/AbdulDevHub/Gates-Of-Heaven-And-Hell",
   "incognito": "split",
@@ -55,6 +55,7 @@
         "styles/pause.css",
         "styles/heaven.css",
         "scripts/blocked.js",
+        "scripts/sfx.js",
         "scripts/pause.js",
         "scripts/heaven.js",
         "scripts/reminders.js",

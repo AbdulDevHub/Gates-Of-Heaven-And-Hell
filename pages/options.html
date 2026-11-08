@@ -22,11 +22,6 @@
       <button class="tab" role="tab" type="button" data-tab="journey" aria-selected="false">Journey</button>
       <button class="tab" role="tab" type="button" data-tab="settings" aria-selected="false">Settings</button>
     </nav>
-    <div class="topbar-actions">
-      <input type="file" id="importFile" accept=".json,.jsonc" hidden />
-      <button id="importBtn" class="btn btn-ghost" type="button">Import</button>
-      <button id="exportBtn" class="btn btn-ghost" type="button">Export</button>
-    </div>
   </header>
 
   <main class="wrap">
@@ -35,12 +30,6 @@
     <section id="tab-rules" class="tab-panel" role="tabpanel">
 
       <div class="tools-card">
-        <form id="testerForm" class="tester">
-          <label class="sr-only" for="testerUrl">URL to test</label>
-          <input type="text" id="testerUrl" placeholder="Test a URL: will it be gated, and why?" autocomplete="off" spellcheck="false" />
-          <button type="submit" class="btn btn-gold">Test</button>
-        </form>
-        <div id="testerResult" class="tester-result" hidden></div>
         <div class="filter-row">
           <label class="sr-only" for="filterInput">Filter rules</label>
           <input type="search" id="filterInput" placeholder="Filter rules by site, word, note or message…" autocomplete="off" />
@@ -66,12 +55,12 @@
       <section class="panel" data-list="pauseAndThink">
         <div class="panel-head">
           <h2><span class="dot dot-pause" aria-hidden="true"></span>Pause &amp; Think <span class="count" id="pauseAndThinkCount"></span></h2>
-          <p class="panel-sub">The crossroads. Matches show a reflection wait, then you type <code>Yes I Am Sure</code> to go through, or turn back. Freely editable.</p>
+          <p class="panel-sub">The crossroads. Matches show a reflection wait, then you type the rule's note (or <code>Yes I Am Sure</code> if it has none) to go through, or turn back. Freely editable.</p>
         </div>
         <form id="pauseAndThinkForm" class="add-form">
           <input type="text" id="pauseAndThinkDomain" list="domainList" placeholder="site, e.g. reddit.com" required autocomplete="off" />
           <input type="text" id="pauseAndThinkSubstring" placeholder="word in URL (optional), e.g. /r/popular" autocomplete="off" />
-          <input type="text" id="pauseAndThinkNote" placeholder="note on the gate (optional)" autocomplete="off" />
+          <input type="text" id="pauseAndThinkNote" placeholder="phrase to type, e.g. I Will Limit My Usage (optional)" autocomplete="off" />
           <button type="submit" class="btn btn-gold">Add</button>
         </form>
         <ul id="pauseAndThinkList" class="rule-list"></ul>
@@ -98,83 +87,162 @@
 
     <!-- ============================== JOURNEY ============================== -->
     <section id="tab-journey" class="tab-panel" role="tabpanel" hidden>
-      <div class="panel-head">
-        <h2>Your Journey</h2>
-        <p class="panel-sub">Counted on this device only. A gate is "held" when a Blocked page stops you or you turn back at a Pause &amp; Think gate. A "slip" is going through a gate or pausing a Blocked rule.</p>
-      </div>
-      <div class="tiles" id="journeyTiles"></div>
-      <div class="chart-card">
-        <div class="chart-head">
-          <h3>Last 30 days</h3>
-          <div class="legend">
-            <span><i class="swatch swatch-held"></i>Gates held</span>
-            <span><i class="swatch swatch-slip"></i>Slips</span>
-          </div>
+      <div class="panel-head panel-head-split">
+        <div>
+          <h2>Your Journey</h2>
+          <p class="panel-sub">Counted on this device only. A gate is "held" when a Blocked page stops you or you turn back at a Pause &amp; Think gate (closing the tab counts). A "slip" is going through a gate or pausing a Blocked rule. Each rule keeps its own streak, and today's slips only show up from tomorrow.</p>
         </div>
-        <div id="journeyChart" class="chart"></div>
-        <div id="chartTip" class="chart-tip" hidden></div>
-        <details class="table-view">
-          <summary>Show as table</summary>
-          <div id="journeyTable"></div>
-        </details>
+        <div class="clear-stats" role="group" aria-labelledby="clearStatsLabel">
+          <span id="clearStatsLabel" class="clear-label">Clear stats</span>
+          <div class="btn-row">
+            <button type="button" class="btn btn-ghost btn-small" data-clear="hour">Last hour</button>
+            <button type="button" class="btn btn-ghost btn-small" data-clear="day">Today</button>
+            <button type="button" class="btn btn-ember btn-small" data-clear="all">All time</button>
+          </div>
+          <span class="clear-hint" aria-live="polite"></span>
+        </div>
       </div>
+
+      <div class="journey-body">
+      <div class="bento bento-tiles" id="journeyTiles"></div>
+
+      <div class="bento">
+        <div class="card span-4">
+          <div class="chart-head">
+            <h3>Last 30 days</h3>
+            <div class="legend">
+              <span><i class="swatch swatch-held"></i>Gates held</span>
+              <span><i class="swatch swatch-slip"></i>Slips</span>
+            </div>
+          </div>
+          <div id="journeyChart" class="chart"></div>
+          <details class="table-view">
+            <summary>Show as table</summary>
+            <div id="journeyTable"></div>
+          </details>
+        </div>
+        <div class="card span-2">
+          <div class="chart-head"><h3>Pause &amp; Think funnel</h3></div>
+          <p class="card-sub">Every crossroads visit kept (up to a year).</p>
+          <div id="journeyFunnel" class="funnel"></div>
+        </div>
+
+        <div class="card span-6">
+          <div class="chart-head">
+            <h3>The year</h3>
+            <div class="legend">
+              <span class="scale-legend">Fewer held <i class="cell l1"></i><i class="cell l2"></i><i class="cell l3"></i><i class="cell l4"></i> More</span>
+              <span><i class="slip-mark"></i>Slipped that day</span>
+            </div>
+          </div>
+          <div id="journeyYear" class="calendar"></div>
+        </div>
+
+        <div class="card span-3">
+          <div class="chart-head"><h3>When gates hit</h3></div>
+          <p class="card-sub">Gate views by weekday and hour. Darker = more attempts.</p>
+          <div id="journeyHours" class="hours"></div>
+        </div>
+        <div class="card span-3">
+          <div class="chart-head"><h3>Time on passes</h3></div>
+          <p class="card-sub">Minutes spent on a site after going through, by rule.</p>
+          <div id="journeyPassTime" class="bar-list"></div>
+        </div>
+
+        <div class="card span-6">
+          <div class="chart-head">
+            <h3>Every rule</h3>
+            <p class="card-sub">Click a column to sort.</p>
+          </div>
+          <div class="table-scroll"><table class="board" id="journeyBoard"></table></div>
+        </div>
+      </div>
+      </div>
+      <div id="hoverTip" class="chart-tip" hidden></div>
     </section>
 
     <!-- ============================== SETTINGS ============================== -->
     <section id="tab-settings" class="tab-panel" role="tabpanel" hidden>
-      <form id="settingsForm" class="settings" autocomplete="off">
+      <div class="bento" id="settingsGrid">
 
-        <fieldset class="setting-group">
-          <legend>Gate reminders</legend>
-          <p class="panel-sub">The lines shown on the gates and when you turn back.</p>
-          <label class="radio"><input type="radio" name="reminderStyle" value="universal" /> <span><strong>Universal</strong> reflective lines for anyone</span></label>
-          <label class="radio"><input type="radio" name="reminderStyle" value="faith" /> <span><strong>Faith-based</strong> Islamic reminders</span></label>
-        </fieldset>
-
-        <fieldset class="setting-group">
-          <legend>Pause &amp; Think</legend>
-          <label class="field">
-            <span>Reflection wait</span>
-            <span class="input-unit"><input type="number" name="pauseWaitSeconds" min="3" max="300" /> seconds</span>
+        <section class="card span-3">
+          <h3>Pause &amp; Think defaults</h3>
+          <label class="row">
+            <span>Wait before typing</span>
+            <span class="input-unit"><input type="number" name="pauseWaitSeconds" min="3" max="300" /> s</span>
           </label>
-          <label class="field">
-            <span>After going through, the pass lasts</span>
+          <label class="row">
+            <span>After going through, access lasts</span>
             <select name="passMode">
-              <option value="activity">while I stay on the site</option>
+              <option value="activity">while I'm on the site</option>
               <option value="fixed">a fixed time</option>
               <option value="endOfDay">until the end of today</option>
             </select>
           </label>
-          <label class="field" data-show-for="activity">
-            <span>Pass ends after leaving the site for</span>
+          <label class="row" data-show-for="activity">
+            <span>…and ends once I've left it for</span>
             <span class="input-unit"><input type="number" name="passGraceMinutes" min="1" max="120" /> min</span>
           </label>
-          <label class="field" data-show-for="fixed">
-            <span>Fixed pass length</span>
+          <label class="row" data-show-for="fixed">
+            <span>…for</span>
             <span class="input-unit"><input type="number" name="passFixedMinutes" min="1" max="720" /> min</span>
           </label>
-          <p class="hint">Each Pause &amp; Think rule can override these in its Edit form. When a pass ends, open tabs on that site return to the gate.</p>
-        </fieldset>
+          <p class="hint">Any rule can override these in its Edit form. When access ends, open tabs on that site go back to the gate.</p>
+        </section>
 
-        <fieldset class="setting-group">
-          <legend>Blocked rules</legend>
-          <label class="field">
-            <span>Cooldown before a rule can be paused</span>
-            <span class="input-unit"><input type="number" id="cooldownInput" min="5" max="1440" /> min</span>
-          </label>
-          <button type="button" id="cooldownApply" class="btn btn-gold btn-small">Apply cooldown</button>
+        <section class="card span-3">
+          <h3>Blocked cooldown</h3>
+          <div class="row">
+            <span>Wait before a rule can be paused</span>
+            <span class="input-unit"><input type="number" id="cooldownInput" min="5" max="1440" aria-label="Cooldown minutes" /> min <button type="button" id="cooldownApply" class="btn btn-gold btn-small">Apply</button></span>
+          </div>
           <p class="hint" id="cooldownStatus"></p>
-          <p class="hint">Longer cooldowns apply at once. A shorter one only takes effect after the current cooldown has passed, so it can't be used as a shortcut.</p>
-        </fieldset>
+          <p class="hint">Longer applies at once. Shorter only takes effect after the current cooldown has passed. A rule can also have its own cooldown.</p>
+        </section>
 
-        <fieldset class="setting-group">
-          <legend>Journey</legend>
-          <label class="field">
-            <span>Time reclaimed per gate held (estimate)</span>
+        <section class="card span-2">
+          <h3>Gate reminders</h3>
+          <div class="segmented" role="radiogroup" aria-label="Gate reminders">
+            <label><input type="radio" name="reminderStyle" value="universal" /><span>Universal</span></label>
+            <label><input type="radio" name="reminderStyle" value="faith" /><span>Faith-based</span></label>
+          </div>
+          <p class="hint">Universal: reflective lines for anyone. Faith-based: Islamic reminders.</p>
+          <label class="check sound-check"><input type="checkbox" name="soundEffects" /> Gate sound effects</label>
+        </section>
+
+        <section class="card span-2">
+          <h3>Backup</h3>
+          <div class="btn-row">
+            <input type="file" id="importFile" accept=".json,.jsonc" hidden />
+            <button id="importBtn" class="btn btn-gold btn-small" type="button">Import</button>
+            <button id="exportBtn" class="btn btn-ghost btn-small" type="button">Export</button>
+          </div>
+          <p class="hint">A JSONC rule book. Import replaces your rules; locked rules stay.</p>
+        </section>
+
+        <section class="card span-2">
+          <h3>Journey estimate</h3>
+          <label class="row">
+            <span>Time reclaimed per gate held</span>
             <span class="input-unit"><input type="number" name="minutesPerGate" min="1" max="120" /> min</span>
           </label>
-        </fieldset>
-      </form>
+        </section>
+
+        <section class="card span-6">
+          <h3>Test a URL</h3>
+          <form id="testerForm" class="tester">
+            <label class="sr-only" for="testerUrl">URL to test</label>
+            <input type="text" id="testerUrl" placeholder="Will this be gated, and why? e.g. youtube.com/@channel" autocomplete="off" spellcheck="false" />
+            <button type="submit" class="btn btn-gold">Test</button>
+          </form>
+          <div id="testerResult" class="tester-result" hidden></div>
+        </section>
+
+        <section class="card span-6">
+          <h3>Per-site timings</h3>
+          <div id="customTimings"></div>
+        </section>
+      </div>
     </section>
 
   </main>
@@ -205,6 +273,7 @@
 
   <script src="../scripts/rules-engine.js"></script>
   <script src="../scripts/shared.js"></script>
+  <script src="../scripts/sfx.js"></script>
   <script src="../scripts/options.js"></script>
   <script src="../scripts/options-journey.js"></script>
   <script src="../scripts/options-settings.js"></script>

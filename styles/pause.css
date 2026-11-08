@@ -1,23 +1,24 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap');
 
-/* The crossroads: a twilight sky with two gates. Heaven (turn back) is always
-   open; the other gate unlocks only after the reflection wait. */
+/* The crossroads: a cool night sky split by two lights. Heaven (turn back) is
+   the whole left card and is always open; the iron gate unlocks only after
+   the reflection wait and then grinds open slowly. */
 
 :root {
-  --night: #070a12;
-  --dusk: #141a2c;
-  --violet: #2a2340;
-  --horizon: #6b4a2a;
-  --parchment: #ede6d6;
-  --mist: #8a93a6;
-  --mist-light: #aeb6c6;
+  --night: #04060c;
+  --night-2: #0a1020;
+  --steel: #7d8fa8;
+  --steel-dim: #2b3546;
+  --parchment: #eef0f4;
+  --mist: #8d97a8;
+  --mist-light: #b4bdcc;
   --gold: #c9a227;
   --gold-bright: #e8c158;
-  --gold-dim: #7a631c;
   --halo: #f3e3a6;
-  --iron: #262a33;
-  --iron-hi: #474c58;
+  --iron: #232a36;
+  --iron-hi: #4a5568;
   --ember-bright: #c25050;
+  --head: 'Space Grotesk', 'Inter', system-ui, sans-serif;
   color-scheme: dark;
 }
 
@@ -42,11 +43,12 @@ body { overflow-x: hidden; }
   position: fixed;
   inset: 0;
   z-index: 0;
-  background: linear-gradient(180deg, var(--night) 0%, var(--dusk) 45%, var(--violet) 72%, var(--horizon) 100%);
+  background: linear-gradient(180deg, var(--night) 0%, var(--night-2) 100%);
+  transition: filter 3s ease;
 }
 .stars {
   position: absolute;
-  inset: 0 0 35%;
+  inset: 0;
   background-image:
     radial-gradient(1.5px 1.5px at 12% 18%, #fff 50%, transparent 51%),
     radial-gradient(1px 1px at 28% 42%, #fff 50%, transparent 51%),
@@ -54,28 +56,27 @@ body { overflow-x: hidden; }
     radial-gradient(1px 1px at 63% 30%, #fff 50%, transparent 51%),
     radial-gradient(1.5px 1.5px at 78% 16%, #fff 50%, transparent 51%),
     radial-gradient(1px 1px at 88% 44%, #fff 50%, transparent 51%),
-    radial-gradient(1px 1px at 6% 52%, #fff 50%, transparent 51%),
-    radial-gradient(1px 1px at 54% 56%, #fff 50%, transparent 51%);
-  opacity: 0.55;
+    radial-gradient(1px 1px at 6% 62%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 54% 76%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 94% 82%, #fff 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 36% 90%, #fff 50%, transparent 51%);
+  opacity: 0.5;
   animation: twinkle 6s ease-in-out infinite alternate;
 }
-@keyframes twinkle { to { opacity: 0.3; } }
-.horizon {
-  position: absolute;
-  left: -10%;
-  right: -10%;
-  bottom: -30vh;
-  height: 60vh;
-  background: radial-gradient(50% 50% at 50% 50%, rgba(232, 193, 88, 0.22), transparent 70%);
-}
+@keyframes twinkle { to { opacity: 0.28; } }
+
+/* Split light: warm white-gold behind Heaven, cold steel behind the iron gate. */
+.light { position: absolute; top: 10%; width: 70vw; height: 90vh; pointer-events: none; transition: opacity 3s ease; }
+.light-heaven { left: -12vw; background: radial-gradient(closest-side, rgba(255, 244, 210, 0.2), rgba(243, 227, 166, 0.07) 55%, transparent); }
+.light-iron { right: -12vw; background: radial-gradient(closest-side, rgba(125, 143, 168, 0.16), rgba(60, 74, 96, 0.06) 55%, transparent); }
 
 .content {
   position: relative;
   z-index: 1;
-  max-width: 900px;
+  max-width: 980px;
   margin: 0 auto;
   min-height: 100vh;
-  padding: 3rem 1.5rem 2.5rem;
+  padding: 2.5rem 1.5rem 2rem;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -98,27 +99,31 @@ body { overflow-x: hidden; }
 
 .title {
   margin: 0 0 0.6rem;
-  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-family: var(--head);
   font-weight: 700;
-  font-size: clamp(1.9rem, 4.6vw, 3rem);
-  line-height: 1.12;
+  font-size: clamp(1.8rem, 4.2vw, 2.8rem);
+  letter-spacing: -0.02em;
+  line-height: 1.1;
 }
 
 .prompt { margin: 0 0 0.9rem; color: var(--mist-light); font-size: 1rem; font-style: italic; }
 .prompt:empty { display: none; }
 
-.site { margin: 0 0 2rem; display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center; align-items: center; }
-.site-host { font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: var(--mist); overflow-wrap: anywhere; }
+.site { margin: 0 0 0.6rem; }
+.site-host { font-family: 'IBM Plex Mono', monospace; font-size: 0.82rem; color: var(--mist); overflow-wrap: anywhere; }
 .site-host:empty { display: none; }
-.note {
-  font-size: 0.78rem;
-  color: var(--halo);
-  background: rgba(243, 227, 166, 0.1);
-  border: 1px solid rgba(243, 227, 166, 0.35);
-  padding: 0.2rem 0.65rem;
-  border-radius: 999px;
+
+.record {
+  margin: 0 0 1.6rem;
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.35rem 0.9rem;
+  font-size: 0.85rem;
+  color: var(--mist-light);
 }
-.note[hidden] { display: none; }
+.record[hidden] { display: none; }
+.record strong { color: var(--halo); font-weight: 600; font-variant-numeric: tabular-nums; }
 
 /* ---------------------------------------------------------------- */
 /* The two paths                                                     */
@@ -126,118 +131,139 @@ body { overflow-x: hidden; }
 
 .paths {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1.15fr 1fr;
   gap: 1.25rem;
   width: 100%;
+  align-items: stretch;
 }
 
 .path {
-  border-radius: 18px;
-  padding: 1.5rem 1.25rem 1.4rem;
+  border-radius: 20px;
+  padding: 1.6rem 1.25rem 1.5rem;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.55rem;
   backdrop-filter: blur(4px);
+  transition: opacity 2s ease, filter 2s ease, transform 0.2s ease, box-shadow 0.25s ease, border-color 0.25s ease;
 }
-.path h2 { margin: 0.4rem 0 0; font-family: 'Cormorant Garamond', Georgia, serif; font-size: 1.5rem; font-weight: 700; }
-.path-sub { margin: 0 0 0.4rem; font-size: 0.84rem; color: var(--mist-light); min-height: 2.5em; line-height: 1.45; max-width: 300px; }
+.path-title { margin: 0.5rem 0 0; font-family: var(--head); font-size: 1.5rem; font-weight: 700; letter-spacing: -0.01em; }
+.path-sub { margin: 0 0 0.4rem; font-size: 0.86rem; color: var(--mist-light); line-height: 1.5; max-width: 320px; }
+.phrase { color: var(--halo); font-weight: 600; }
 
+/* The whole Heaven card is the Turn Back button. */
 .path-heaven {
-  background: linear-gradient(180deg, rgba(243, 227, 166, 0.12), rgba(243, 227, 166, 0.03));
-  border: 1px solid rgba(243, 227, 166, 0.4);
-  box-shadow: 0 0 50px rgba(243, 227, 166, 0.12);
+  appearance: none;
+  font: inherit;
+  color: var(--parchment);
+  cursor: pointer;
+  justify-content: center;
+  background: linear-gradient(180deg, rgba(243, 227, 166, 0.14), rgba(243, 227, 166, 0.04));
+  border: 1px solid rgba(243, 227, 166, 0.45);
+  box-shadow: 0 0 60px rgba(243, 227, 166, 0.14);
 }
+.path-heaven .path-title { font-size: 2rem; color: #fff6dc; }
+.path-heaven .path-sub { font-size: 0.95rem; }
+.path-heaven:hover:not(:disabled) { border-color: var(--halo); box-shadow: 0 0 80px rgba(243, 227, 166, 0.3); transform: translateY(-2px); }
+.path-heaven:active:not(:disabled) { transform: scale(0.99); }
+.path-heaven:focus-visible { outline: 2px solid #fff; outline-offset: 4px; }
+.path-heaven:disabled { cursor: default; }
+
 .path-onward {
-  background: linear-gradient(180deg, rgba(38, 42, 51, 0.55), rgba(10, 12, 18, 0.6));
-  border: 1px solid rgba(71, 76, 88, 0.6);
+  background: linear-gradient(180deg, rgba(35, 42, 54, 0.6), rgba(8, 11, 18, 0.65));
+  border: 1px solid rgba(74, 85, 104, 0.6);
 }
 
-/* Mini gates */
-.gate { position: relative; width: 120px; height: 140px; }
+/* Gates */
+.gate { position: relative; display: block; width: var(--gw); height: var(--gh); }
 .gate .arch {
   position: absolute;
   inset: 0 0 auto;
-  height: 60px;
+  height: calc(var(--gw) / 2);
   border: 4px solid;
   border-bottom: 0;
-  border-radius: 60px 60px 0 0;
+  border-radius: 999px 999px 0 0;
 }
 .gate .leaf {
   position: absolute;
-  top: 30px;
+  top: calc(var(--gw) / 4);
   bottom: 0;
   width: 50%;
   border: 3px solid;
   background-image: repeating-linear-gradient(90deg, transparent 0 9px, currentColor 9px 12px);
   transition: transform 1.2s ease;
+  z-index: 1;
 }
 .gate .leaf.l { left: 0; transform-origin: left; }
 .gate .leaf.r { right: 0; transform-origin: right; }
 
-.gate-heaven { color: var(--gold-bright); perspective: 400px; }
-.gate-heaven .arch { border-color: var(--gold-bright); box-shadow: 0 -4px 22px rgba(243, 227, 166, 0.6); }
+.gate-heaven { --gw: 190px; --gh: 220px; color: var(--gold-bright); perspective: 500px; }
+.gate-heaven .arch { border-color: var(--gold-bright); box-shadow: 0 -4px 26px rgba(243, 227, 166, 0.6); }
 .gate-heaven .leaf { border-color: var(--gold-bright); color: rgba(243, 227, 166, 0.7); }
-.gate-heaven .leaf.l { transform: rotateY(-38deg); }
-.gate-heaven .leaf.r { transform: rotateY(38deg); }
+.gate-heaven .leaf.l { transform: rotateY(-40deg); }
+.gate-heaven .leaf.r { transform: rotateY(40deg); }
+.path-heaven:hover .gate-heaven .leaf.l { transform: rotateY(-55deg); }
+.path-heaven:hover .gate-heaven .leaf.r { transform: rotateY(55deg); }
 .gate-heaven .glow {
   position: absolute;
-  inset: 30px 18px 0;
+  inset: 46px 26px 0;
   background: radial-gradient(ellipse at 50% 70%, #fff 0%, rgba(243, 227, 166, 0.8) 35%, transparent 72%);
   animation: breathe 3.5s ease-in-out infinite;
 }
 @keyframes breathe { 50% { opacity: 0.55; } }
 
-.gate-onward { color: var(--iron-hi); }
+.gate-onward { --gw: 140px; --gh: 165px; color: var(--iron-hi); }
 .gate-onward .arch { border-color: var(--iron-hi); }
-.gate-onward .leaf { border-color: var(--iron-hi); color: rgba(71, 76, 88, 0.85); background-color: rgba(7, 10, 18, 0.55); }
-.path-onward.is-unlocked .gate-onward .leaf.l { transform: translateX(-8px); }
-.path-onward.is-unlocked .gate-onward .leaf.r { transform: translateX(8px); }
+.gate-onward .leaf { border-color: var(--iron-hi); color: rgba(74, 85, 104, 0.9); background-color: rgba(6, 8, 14, 0.7); }
+.gate-onward .dark {
+  position: absolute;
+  inset: 36px 3px 0;
+  background: radial-gradient(ellipse at 50% 60%, #000 0%, #000 45%, rgba(0, 0, 0, 0.6) 70%, transparent);
+  opacity: 0;
+}
+.path-onward.is-unlocked .gate-onward .leaf.l { transform: translateX(-4px); }
+.path-onward.is-unlocked .gate-onward .leaf.r { transform: translateX(4px); }
 
-.ring { position: absolute; width: 84px; height: 84px; left: 18px; top: 44px; transform: rotate(-90deg); }
-.ring-track { fill: rgba(7, 10, 18, 0.85); stroke: rgba(71, 76, 88, 0.6); stroke-width: 6; }
-.ring-progress { fill: none; stroke: var(--gold); stroke-width: 6; stroke-linecap: round; stroke-dasharray: 276.46; stroke-dashoffset: 276.46; }
+.ring { position: absolute; width: 84px; height: 84px; left: 28px; top: 52px; transform: rotate(-90deg); z-index: 2; }
+.ring-track { fill: rgba(6, 8, 14, 0.88); stroke: rgba(74, 85, 104, 0.6); stroke-width: 6; }
+/* No countdown: an open-ended sweep, so there is no number to wait out. */
+.ring-progress {
+  fill: none;
+  stroke: var(--steel);
+  stroke-width: 6;
+  stroke-linecap: round;
+  stroke-dasharray: 46 230.46;
+  transform-origin: 50px 50px;
+  animation: ring-sweep 3.2s linear infinite;
+}
+@keyframes ring-sweep { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .ring-progress { animation: none; stroke-dasharray: none; opacity: 0.5; }
+}
 .ring-text {
   position: absolute;
-  left: 18px;
-  top: 44px;
+  left: 28px;
+  top: 52px;
   width: 84px;
   height: 84px;
+  z-index: 3;
   display: flex;
   align-items: center;
   justify-content: center;
-  font: 600 1.35rem 'Inter', sans-serif;
-  color: var(--parchment);
-  font-variant-numeric: tabular-nums;
+  font: 600 0.7rem var(--head);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--mist-light, var(--parchment));
 }
 .path-onward.is-unlocked .ring, .path-onward.is-unlocked .ring-text { opacity: 0; transition: opacity 0.6s ease; }
 
-/* Buttons + form */
-.btn-heaven {
-  appearance: none;
-  border: 1px solid var(--halo);
-  background: linear-gradient(180deg, #f6e7b0, #d9b94e);
-  color: #2a2008;
-  font: 600 0.95rem 'Inter', sans-serif;
-  letter-spacing: 0.06em;
-  padding: 0.85rem 2.2rem;
-  border-radius: 999px;
-  cursor: pointer;
-  box-shadow: 0 0 26px rgba(243, 227, 166, 0.45);
-  transition: box-shadow 0.25s ease, transform 0.15s ease;
-  margin-top: auto;
-}
-.btn-heaven:hover:not(:disabled) { box-shadow: 0 0 40px rgba(243, 227, 166, 0.7); }
-.btn-heaven:active:not(:disabled) { transform: scale(0.98); }
-.btn-heaven:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
-.btn-heaven:disabled { opacity: 0.7; cursor: default; }
-
-.pause-form { display: flex; flex-direction: column; gap: 0.6rem; width: 100%; max-width: 300px; margin-top: auto; }
+/* Form */
+.pause-form { display: flex; flex-direction: column; gap: 0.6rem; width: 100%; max-width: 320px; margin-top: auto; }
 .input-wrapper { transition: opacity 0.4s ease; }
 .input-wrapper.is-locked { opacity: 0.45; }
 .confirm-input {
   width: 100%;
-  background: rgba(7, 10, 18, 0.7);
+  background: rgba(6, 8, 14, 0.75);
   border: 1px solid var(--iron-hi);
   color: var(--parchment);
   border-radius: 10px;
@@ -245,7 +271,7 @@ body { overflow-x: hidden; }
   font: 500 0.92rem 'Inter', sans-serif;
   text-align: center;
 }
-.confirm-input:focus { outline: none; border-color: var(--gold); }
+.confirm-input:focus { outline: none; border-color: var(--steel); }
 .confirm-input:disabled { cursor: not-allowed; }
 
 .btn-continue {
@@ -263,7 +289,7 @@ body { overflow-x: hidden; }
 .btn-continue.is-ready:hover { border-color: var(--parchment); }
 .btn-continue:focus-visible { outline: 2px solid var(--mist-light); outline-offset: 2px; }
 
-.tally { margin: 1.75rem 0 0; font-size: 0.8rem; color: var(--mist); }
+.tally { margin: 1.5rem 0 0; font-size: 0.8rem; color: var(--mist); }
 .tally:empty { display: none; }
 
 .toast {
@@ -271,8 +297,8 @@ body { overflow-x: hidden; }
   bottom: 2rem;
   left: 50%;
   transform: translateX(-50%) translateY(14px);
-  background: #1a2030;
-  border: 1px solid var(--gold);
+  background: #141b2a;
+  border: 1px solid var(--steel);
   color: var(--parchment);
   padding: 0.75rem 1.4rem;
   border-radius: 999px;
@@ -284,17 +310,88 @@ body { overflow-x: hidden; }
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-/* Going through: no reward, just a cold fade. */
-body.is-descending .content { filter: grayscale(1) brightness(0.4); opacity: 0; transition: filter 0.6s ease, opacity 0.6s ease; }
-body.is-descending .sky { filter: grayscale(1) brightness(0.3); transition: filter 0.6s ease; }
-.is-ascending .content { filter: blur(2px); }
+/* ---------------------------------------------------------------- */
+/* Going through: the iron gate grinds open over ~5 s. No reward,    */
+/* no skipping; the light on the Heaven side drains away.            */
+/* ---------------------------------------------------------------- */
 
-@media (max-width: 680px) {
+.opening {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 2.2rem;
+  z-index: 5;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 1s ease 0.5s;
+}
+.opening[hidden] { display: none; }
+body.is-going .opening { opacity: 1; }
+.opening-text { margin: 0; font: 600 1rem var(--head); letter-spacing: 0.04em; color: var(--mist-light); }
+.opening-sub { margin: 0.35rem 0 0; font-size: 0.78rem; color: var(--mist); }
+
+body.is-going { cursor: progress; }
+body.is-going .sky { filter: brightness(0.45) saturate(0.4); }
+body.is-going .light-heaven { opacity: 0; }
+body.is-going .path-heaven { opacity: 0.12; filter: grayscale(1); pointer-events: none; }
+body.is-going .title,
+body.is-going .prompt,
+body.is-going .eyebrow,
+body.is-going .record,
+body.is-going .tally,
+body.is-going .path-onward .path-sub,
+body.is-going .pause-form { opacity: 0.25; transition: opacity 2s ease; }
+body.is-going .path-onward { animation: rumble 5s linear forwards; }
+body.is-going .gate-onward .leaf.l { animation: grind-l 4.6s linear forwards; }
+body.is-going .gate-onward .leaf.r { animation: grind-r 4.6s linear forwards; }
+body.is-going .gate-onward .dark { animation: void 4.6s ease-in forwards; }
+body.is-going .content { animation: sink 5s ease-in forwards; }
+
+/* Stop-start motion: it moves a little, catches, moves again. */
+@keyframes grind-l {
+  0% { transform: translateX(0); }
+  12% { transform: translateX(-3px); }
+  20% { transform: translateX(-3px); }
+  34% { transform: translateX(-12px); }
+  44% { transform: translateX(-12px); }
+  60% { transform: translateX(-26px); }
+  68% { transform: translateX(-26px); }
+  100% { transform: translateX(-62px); }
+}
+@keyframes grind-r {
+  0% { transform: translateX(0); }
+  12% { transform: translateX(3px); }
+  20% { transform: translateX(3px); }
+  34% { transform: translateX(12px); }
+  44% { transform: translateX(12px); }
+  60% { transform: translateX(26px); }
+  68% { transform: translateX(26px); }
+  100% { transform: translateX(62px); }
+}
+@keyframes rumble {
+  0%, 11%, 21%, 33%, 45%, 59%, 69%, 100% { translate: 0 0; }
+  13%, 35%, 61% { translate: -1.5px 1px; }
+  15%, 37%, 63% { translate: 1.5px -1px; }
+  17%, 39%, 65% { translate: -1px 0; }
+}
+@keyframes void { 0% { opacity: 0; } 60% { opacity: 0.6; } 100% { opacity: 1; } }
+@keyframes sink {
+  0%, 70% { filter: none; }
+  100% { filter: brightness(0.15); }
+}
+
+@media (max-width: 720px) {
   .paths { grid-template-columns: 1fr; }
   .content { padding-top: 2rem; justify-content: flex-start; }
+  .gate-heaven { --gw: 150px; --gh: 175px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .stars, .gate-heaven .glow { animation: none; }
-  .content, .gate .leaf { transition: none; }
+  .content, .gate .leaf, .path { transition: none; }
+  body.is-going .path-onward,
+  body.is-going .gate-onward .leaf.l,
+  body.is-going .gate-onward .leaf.r { animation: none; }
+  body.is-going .gate-onward .dark { animation: none; opacity: 0.8; }
 }

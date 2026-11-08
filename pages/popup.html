@@ -19,6 +19,11 @@
   </section>
 
   <section class="actions" id="actions" hidden>
+    <div class="target-fields">
+      <label><span>Site</span><input type="text" id="qaDomain" autocomplete="off" spellcheck="false" /></label>
+      <label><span>Only URLs containing <em>(optional)</em></span><input type="text" id="qaSubstring" placeholder="e.g. /@channel or shorts" autocomplete="off" spellcheck="false" /></label>
+      <p class="preview" id="qaPreview"></p>
+    </div>
     <button class="act act-hell" type="button" data-list="blocked">
       <span class="act-title">Block this site</span><span class="act-sub">Hell gate, no way through</span>
     </button>
@@ -34,8 +39,6 @@
     <h2>Open passes</h2>
     <ul id="passes"></ul>
   </section>
-
-  <section class="today" id="today"></section>
 
   <footer class="foot">
     <button class="link" type="button" data-open="rules">Rule Book</button>

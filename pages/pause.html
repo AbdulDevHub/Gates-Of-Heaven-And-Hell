@@ -12,38 +12,40 @@
 
   <div class="sky" aria-hidden="true">
     <div class="stars"></div>
-    <div class="horizon"></div>
+    <div class="light light-heaven"></div>
+    <div class="light light-iron"></div>
   </div>
 
   <main class="content">
     <p class="eyebrow">Gates Of Heaven &amp; Hell · The Crossroads</p>
     <h1 class="title">Are You Sure You Want To Continue?</h1>
     <p id="prompt" class="prompt"></p>
-    <p class="site"><span id="siteHost" class="site-host"></span><span id="note" class="note" hidden></span></p>
+    <p class="site"><span id="siteHost" class="site-host"></span></p>
+    <p id="ruleRecord" class="record" hidden></p>
 
     <div class="paths">
-      <section class="path path-heaven" aria-labelledby="heavenTitle">
-        <div class="gate gate-heaven" aria-hidden="true">
+      <button id="closeTabBtn" class="path path-heaven" type="button" aria-describedby="heavenSub">
+        <span class="gate gate-heaven" aria-hidden="true">
           <span class="arch"></span><span class="leaf l"></span><span class="leaf r"></span><span class="glow"></span>
-        </div>
-        <h2 id="heavenTitle">Turn Back</h2>
-        <p class="path-sub">Close this tab and keep the hour yours.</p>
-        <button id="closeTabBtn" class="btn-heaven" type="button">Turn Back</button>
-      </section>
+        </span>
+        <span class="path-title">Turn Back</span>
+        <span id="heavenSub" class="path-sub">Close this tab and keep the hour yours.</span>
+      </button>
 
       <section class="path path-onward" aria-labelledby="onwardTitle">
         <div class="gate gate-onward" aria-hidden="true">
           <span class="arch"></span><span class="leaf l"></span><span class="leaf r"></span>
+          <span class="dark"></span>
           <svg class="ring" viewBox="0 0 100 100">
             <circle class="ring-track" cx="50" cy="50" r="44" />
             <circle id="ringProgress" class="ring-progress" cx="50" cy="50" r="44" />
           </svg>
           <span id="ringText" class="ring-text"></span>
         </div>
-        <h2 id="onwardTitle">Go Through</h2>
+        <h2 id="onwardTitle" class="path-title">Go Through</h2>
         <p id="passInfo" class="path-sub"></p>
         <form id="pauseForm" class="pause-form">
-          <label class="sr-only" for="confirmInput">Type Yes I Am Sure to continue</label>
+          <label class="sr-only" for="confirmInput" id="confirmLabel">Type the phrase to continue</label>
           <div id="inputWrapper" class="input-wrapper is-locked">
             <input type="text" id="confirmInput" class="confirm-input" placeholder="Reflecting…" disabled autocomplete="off" spellcheck="false" />
           </div>
@@ -55,11 +57,17 @@
     <p id="tally" class="tally"></p>
   </main>
 
+  <div class="opening" id="opening" aria-live="polite" hidden>
+    <p class="opening-text">The gate is opening…</p>
+    <p class="opening-sub">Closing this tab still counts as turning back.</p>
+  </div>
+
   <div id="toast" class="toast" role="status" aria-live="assertive"></div>
 
   <script src="../scripts/rules-engine.js"></script>
   <script src="../scripts/shared.js"></script>
   <script src="../scripts/reminders.js"></script>
+  <script src="../scripts/sfx.js"></script>
   <script src="../scripts/heaven.js"></script>
   <script src="../scripts/pause.js"></script>
 </body>

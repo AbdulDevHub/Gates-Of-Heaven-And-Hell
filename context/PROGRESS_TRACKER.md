@@ -6,12 +6,14 @@
 > "Earlier history" rather than deleting them.
 
 ## Current state
-v2.0.0, loaded unpacked (not on the Chrome Web Store). All features below working and covered by unit tests plus a Playwright run with the extension loaded.
+v2.1.0, loaded unpacked (not on the Chrome Web Store). All features below working and covered by unit tests plus a Playwright run with the extension loaded.
 - **Blocking**: DNR dynamic rules; EXCLUDED (4) > open passes (3) > PAUSE_AND_THINK (2) > BLOCKED (1). Precise host/parent-domain matching, `*` wildcard site, schedules.
-- **Hell gate**: portcullis + embers, custom message or reminder, single Turn Back → Heaven transition.
-- **Crossroads (Pause & Think)**: visible-time wait, exact `Yes I Am Sure`, passes (while on site / fixed / end of day), per-rule overrides, note shown, End pass re-gates tabs.
-- **Rule Book**: Rules (tester, filter, quick add, lint fixes, schedules, lock, pause with chosen length), Journey (tiles + 30-day chart), Settings (reminders, timers, staged cooldown). JSONC import/export keeps old format and locked rules.
-- **Popup**: verdict + reason, quick add, open passes, today's stats.
+- **Hell gate**: portcullis with heat shimmer, flame wall + embers + flares, custom message or reminder, per-rule last paused/streak, single Turn Back → Heaven transition. Links opened in a new tab to a Blocked site close instantly (counted as held).
+- **Crossroads (Pause & Think)**: night sky with split light, whole Heaven card = Turn Back, visible-time wait, phrase = rule note or `Yes I Am Sure` (no paste), 5 s gate opening before the pass, no visible countdown, passes (while on site / fixed / end of day), per-rule overrides, per-rule last went through/streak, closing the tab = walk-away, End pass re-gates tabs.
+- **Rule Book**: Rules (filter, quick add, lint fixes, schedules, lock, pause with chosen length, sentence-style per-rule timings, per-rule Blocked cooldown), Journey (8 tiles, 30-day chart, year calendar, hour heatmap, funnel, pass time, sortable per-rule table; today's slips hidden; clear last hour / today / all time), Settings bento (defaults, cooldown, reminders, import/export, URL tester, per-site timings). JSONC import/export keeps old format, locked rules and (by site + text) rule ids/stats.
+- **Popup**: verdict + reason, quick add with editable site + optional URL text and preview, open passes (no stats).
+- **Sounds**: synthesized Web Audio SFX on both gates and the Heaven transition; toggle in Settings.
+- **Stats**: per rule (streak, best, last slip, views, held, slips, pass minutes), 365 days, weekday × hour views. Fonts: Space Grotesk + Inter (no serif).
 - **Other**: split incognito; YouTube search interceptor; SPA navigation gating; Google search rules match the query text only.
 
 ## In progress
@@ -24,6 +26,15 @@ v2.0.0, loaded unpacked (not on the Chrome Web Store). All features below workin
 - [ ] Keyboard shortcut / context menu "Gate this site".
 
 ## Session log
+
+### 2026-11-08 (v2.1 polish)
+- Journey: tiles and charts share one gap; clear-stats buttons (last hour / today / all time, click twice) fill the header's empty right side. Undo log `stats.log` + `SH.clearStats` + `CLEAR_STATS`.
+- Gate SFX (`scripts/sfx.js`, Web Audio, Settings toggle). Removed the visible countdown from the crossroads (ring + opening). Removed popup stat cards. README features and social preview (Space Grotesk, no serif) refreshed.
+
+### 2026-11-08 (v2.1)
+- Feedback pass (14 items, settled in a grill-me Q&A): per-rule streaks and "last went through" on gates, auto-close of link-opened tabs to Blocked sites, closing a gate tab yourself counts as a walk-away (`openGates`), the note replaces `Yes I Am Sure`, 5 s go-through animation, more fire on the Hell gate, night-sky crossroads with the whole Heaven card as the button, Space Grotesk instead of Cormorant, bento Settings (import/export + tester moved in), per-site timings + per-rule Blocked cooldown, popup site/substring fields, big-data Journey, today's slips hidden.
+- Review fixes: popup exception with extra text hidden on hosts that have gate rules (it could exempt other gated URLs), serialized `usedTabs` writes, import keeps ids of existing rules so streaks survive, `gate-unlocked` counted once per tab.
+- Verified with 21 unit tests and a Playwright run with the extension loaded (auto-close, walk-away on close, note phrase, pass only after the opening, popup substring add).
 
 ### 2026-11-08
 - Diagnosed filmverse-azure.vercel.app not pausing: its rule had "Limited Access" in the substring slot, so only URLs containing that text matched. Added notes, a URL tester and lint with a "Move to note" fix.

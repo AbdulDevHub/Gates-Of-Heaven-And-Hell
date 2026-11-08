@@ -196,3 +196,109 @@ test('JSONC round trip keeps old array format and new fields', () => {
   assert.deepEqual(out.PAUSE_AND_THINK[0], ['reddit.com', '']);
   assert.equal(out.PAUSE_AND_THINK[1].passMinutes, 10);
 });
+
+test('per-rule streaks: a slip on one rule leaves the others alone', () => {
+  const day0 = new Date(2026, 10, 1, 12).getTime();
+  let st = S.emptyStats(day0);
+  const yt = { ruleId: 'yt', list: 'pauseAndThink', label: 'youtube.com' };
+  const rd = { ruleId: 'rd', list: 'blocked', label: 'reddit.com' };
+  st = S.recordEvent(st, 'blocked-view', day0, rd);
+  st = S.recordEvent(st, 'go-through', day0 + 3 * S.DAY, yt);
+  assert.equal(S.ruleStreak(st, 'yt', day0 + 3 * S.DAY), 0);
+  assert.equal(S.ruleStreak(st, 'yt', day0 + 5 * S.DAY), 2);
+  assert.equal(S.ruleStreak(st, 'rd', day0 + 5 * S.DAY), 6);
+  assert.equal(st.rules.yt.bestStreak, 4);
+  assert.equal(st.rules.rd.held, 1);
+  assert.equal(st.rules.yt.goThroughs, 1);
+  // A rule created after stats began counts from its creation day.
+  assert.equal(S.ruleStreak(st, 'new', day0 + 5 * S.DAY, { createdAt: day0 + 4 * S.DAY }), 2);
+});
+
+test('old stats without rules/hours still load and summarize', () => {
+  const day0 = new Date(2026, 10, 1, 12).getTime();
+  const old = { since: day0, days: { [S.dayKey(day0)]: { blocked: 2, paused: 1, walkAways: 1, goThroughs: 0, rulePauses: 0 } }, lastSlipDay: null, bestStreak: 0 };
+  const sum = S.summarizeStats(old, day0, {}, []);
+  assert.equal(sum.today.held, 3);
+  assert.equal(sum.hours.length, 7);
+  const next = S.recordEvent(old, 'pause-view', day0, { ruleId: 'a' });
+  assert.equal(next.rules.a.views, 1);
+  assert.equal(next.hours[new Date(day0).getDay()][12], 1);
+});
+
+test('funnel, week-over-week and the year series', () => {
+  const now = new Date(2026, 10, 20, 12).getTime();
+  let st = S.emptyStats(now - 20 * S.DAY);
+  const r = { ruleId: 'p', list: 'pauseAndThink' };
+  for (const ev of ['pause-view', 'gate-unlocked', 'phrase-typed', 'go-through']) st = S.recordEvent(st, ev, now, r);
+  st = S.recordEvent(st, 'pause-view', now - 8 * S.DAY, r);
+  st = S.recordEvent(st, 'walk-away', now - 8 * S.DAY, r);
+  st = S.recordPassTime(st, 'p', 25, now);
+  const sum = S.summarizeStats(st, now, {}, [{ list: 'pauseAndThink', rule: { id: 'p', domain: 'x.com', substring: '' } }]);
+  assert.deepEqual(sum.funnel, { seen: 2, waited: 1, typed: 1, through: 1, walkedAway: 1 });
+  assert.deepEqual(sum.week, { held: 0, prevHeld: 1, slips: 1, prevSlips: 0 });
+  assert.equal(sum.year.length, 365);
+  assert.equal(sum.passMinutes, 25);
+  assert.equal(sum.board[0].passMinutes, 25);
+  assert.equal(sum.board[0].walkAwayRate, 50);
+});
+
+test('per-rule cooldown: longer applies now, shorter is staged', () => {
+  const now = 10_000_000;
+  const settings = S.mergeSettings({ blockedCooldownMinutes: 30 });
+  let rule = { cooldownMinutes: null, pendingCooldown: null };
+  assert.equal(S.ruleCooldownMinutes(rule, settings, now), 30);
+  rule = Object.assign(rule, S.requestRuleCooldown(rule, 120, settings, now));
+  assert.equal(S.ruleCooldownMinutes(rule, settings, now), 120);
+  rule = Object.assign(rule, S.requestRuleCooldown(rule, 10, settings, now));
+  assert.equal(S.ruleCooldownMinutes(rule, settings, now), 120);
+  assert.equal(S.ruleCooldownMinutes(rule, settings, now + 120 * S.MINUTE), 10);
+  rule = { cooldownMinutes: 60, pendingCooldown: null };
+  rule = Object.assign(rule, S.requestRuleCooldown(rule, null, settings, now)); // back to the 30 min default
+  assert.equal(S.ruleCooldownMinutes(rule, settings, now), 60);
+  assert.equal(S.ruleCooldownMinutes(rule, settings, now + 60 * S.MINUTE), 30);
+});
+
+test('gate phrase is the note when there is one', () => {
+  assert.equal(S.gatePhrase({ note: '  I Will Limit My Usage ' }), 'I Will Limit My Usage');
+  assert.equal(S.gatePhrase({ note: '' }), 'Yes I Am Sure');
+  assert.equal(S.gatePhrase(null), 'Yes I Am Sure');
+});
+
+test('Blocked cooldownMinutes round-trips through export/import', () => {
+  const rule = S.makeRule('blocked', { domain: 'x.com', cooldownMinutes: 90 });
+  const text = S.serializeRuleBook({ blocked: [rule], pauseAndThink: [], excluded: [] }, null, 0);
+  assert.equal(S.parseRuleBook(text).blocked[0].cooldownMinutes, 90);
+});
+
+test('clearStats undoes the last hour, today, or everything', () => {
+  const noon = new Date(2026, 10, 8, 12, 0).getTime();
+  const H = 60 * 60 * 1000;
+  const yt = { ruleId: 'yt', list: 'pauseAndThink', label: 'youtube.com' };
+  let st = S.emptyStats(noon - 5 * S.DAY);
+  st = S.recordEvent(st, 'go-through', noon - 3 * S.DAY, yt);
+  st = S.recordEvent(st, 'blocked-view', noon - 3 * H);
+  st = S.recordEvent(st, 'pause-view', noon - 10 * 60000, yt);
+  st = S.recordEvent(st, 'go-through', noon - 5 * 60000, yt);
+  st = S.recordPassTime(st, 'yt', 4, noon, { label: 'youtube.com' });
+  const key = S.dayKey(noon);
+
+  const hour = S.clearStats(st, noon - H, noon);
+  assert.equal(hour.days[key].blocked, 1);
+  assert.equal(hour.days[key].goThroughs, 0);
+  assert.equal(hour.days[key].passMinutes, 0);
+  assert.equal(hour.rules.yt.goThroughs, 1);
+  assert.equal(hour.rules.yt.views, 0);
+  assert.equal(hour.rules.yt.lastSlipAt, noon - 3 * S.DAY);
+  assert.equal(hour.lastSlipDay, S.dayKey(noon - 3 * S.DAY));
+  const d = new Date(noon - 10 * 60000);
+  assert.equal(hour.hours[d.getDay()][d.getHours()], 0);
+
+  const today = S.clearStats(st, new Date(noon).setHours(0, 0, 0, 0), noon);
+  assert.equal(today.days[key], undefined);
+  assert.equal(today.days[S.dayKey(noon - 3 * S.DAY)].goThroughs, 1);
+
+  const all = S.clearStats(st, 'all', noon);
+  assert.deepEqual(all.days, {});
+  assert.deepEqual(all.rules, {});
+  assert.equal(all.since, st.since);
+});

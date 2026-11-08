@@ -18,9 +18,10 @@ It's a site blocker, distraction blocker and focus tool for people who have trie
 Most website blockers fail because turning them off takes one click in a weak moment. This one puts friction where it matters:
 
 - **Blocked sites** are stopped by Chrome itself (`declarativeNetRequest`) before the page loads, and replaced with the Hell gate. There's no bypass button, only **Turn Back**.
-- **Pause & Think sites** aren't banned. You get a reflection wait, then type `Yes I Am Sure` to go through, which turns a habit into a choice. The pass lasts while you stay on the site (or a fixed time), then open tabs go back to the gate.
+- **Pause & Think sites** aren't banned. You get a reflection wait (with no countdown to stare at), then type your own promise for that site (its note, or `Yes I Am Sure`) and watch the gate grind open, which turns a habit into a choice. The pass lasts while you stay on the site (or a fixed time), then open tabs go back to the gate.
+- **Links opened in a new tab** to a blocked site close instantly instead of showing the gate.
 - **Turning a block off** means writing why, waiting through a cooldown (30 minutes by default) and confirming again. You choose how long the pause lasts and it resumes on its own. Rules can also be **locked** until Friday evening so they can't be touched at all.
-- **Walking away** plays the Heaven gate and counts toward your **streak**. The Journey tab shows gates held, slips and time reclaimed over 30 days.
+- **Walking away** (the button, or just closing the tab) counts as a gate held. **Every rule keeps its own streak**, shown right on its gate, so one slip on one site doesn't wipe the rest. The Journey tab digs into a year of data.
 - **Exceptions** (one useful page on a blocked site) always win.
 
 Everything lives in Chrome's local storage on your machine. No accounts, no servers, no tracking.
@@ -28,7 +29,7 @@ Everything lives in Chrome's local storage on your machine. No accounts, no serv
 ## Features
 
 - 🔥 **Hell gate for blocked sites**: blocked before the page loads, with no bypass. Custom message per rule.
-- ⚖️ **Pause & Think crossroads**: a reflection wait (it only counts down while you're looking), an exact typed phrase, then a pass that ends when you leave the site, after a fixed time or at the end of the day.
+- ⚖️ **Pause & Think crossroads**: a reflection wait with no visible countdown (it only runs while you're looking), an exact typed phrase, then a pass that ends when you leave the site, after a fixed time or at the end of the day.
 - 😇 **Heaven gate when you walk away**: golden light, an affirmation and today's tally, then the tab closes.
 - 🔒 **Hard locks**: a locked rule can't be paused, edited, deleted or wiped by an import until the lock ends.
 - ⏳ **Friction-gated pausing**: two written reasons plus a cooldown. Shortening the cooldown only takes effect after the current one has passed.
@@ -36,10 +37,12 @@ Everything lives in Chrome's local storage on your machine. No accounts, no serv
 - 🧪 **URL tester**: paste a link and see whether it will be gated, by which rule, and why it isn't when it isn't.
 - 🩺 **Rule health checks**: catches rules that won't do what you meant (a label typed into the substring box, duplicates, rules an exception always overrides) with one-click fixes.
 - ➕ **Quick add**: add many words to an existing site (like `google.com/search`) at once, comma-separated.
-- 🧭 **Toolbar popup**: this page's status, one-click "Block this site" or "Pause & Think", live pass timers with **End pass**, today's stats.
-- 📈 **Journey dashboard**: gates held, slips, clean streak, best streak, walk-away rate and a 30-day chart.
+- 🧭 **Toolbar popup**: this page's status, "Block" or "Pause & Think" for the whole site or just part of it (one YouTube channel, one subreddit), live pass timers with **End pass**.
+- 📈 **Journey dashboard**: per-rule streaks in a sortable table, a year calendar, a weekday × hour heatmap of when gates hit, the Pause & Think funnel, time spent on passes and week-over-week change. Today's slips stay hidden so one slip doesn't snowball. Clear the last hour, today or all time when you need a fresh start.
+- ⏱️ **Per-site timings**: any rule can have its own wait, pass length or (for Blocked rules) pause cooldown.
 - 🔍 **Search engine aware**: Google search rules match only your search text, not Google's tracking parameters. YouTube searches are caught before the results page flashes.
 - 🧩 **Single-page apps covered**: in-app navigation (Reddit, YouTube, X) is gated too, not just full page loads.
+- 🔊 **Gate sounds**: the portcullis slams, the iron gate grinds open, Heaven sings when you walk away. Synthesized in the browser (no audio files) and can be turned off in Settings.
 - 🌍 **Universal or faith-based reminders**: reflective lines for anyone by default, or Islamic reminders if you prefer.
 - 🕶️ **Incognito support** with split mode, and **JSONC import/export** for backups.
 
@@ -143,7 +146,7 @@ pages/                   blocked.html (Hell), pause.html (crossroads), options.h
 scripts/background.js    service worker: DNR rules, timers, passes, re-gating, stats
 scripts/rules-engine.js  pure matching, schedules, URL explanations, lint, DNR regex compiler
 scripts/shared.js        pure settings, timers, stats and JSONC helpers
-scripts/*.js             page controllers, reminder packs, Heaven transition
+scripts/*.js             page controllers, reminder packs, Heaven transition, synthesized sounds
 styles/                  one stylesheet per page plus heaven.css
 tests/                   node --test unit tests
 context/                 architecture, UI tokens and progress notes

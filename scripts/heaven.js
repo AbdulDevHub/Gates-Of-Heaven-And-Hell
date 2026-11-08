@@ -70,6 +70,7 @@
 
     document.body.appendChild(overlay);
     document.body.classList.add('is-ascending');
+    if (root.Sfx) root.Sfx.play('heaven');
     requestAnimationFrame(() => requestAnimationFrame(() => overlay.classList.add('is-open')));
 
     setTimeout(closeTab, wait);

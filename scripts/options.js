@@ -1,6 +1,7 @@
-// options.js — the Rule Book: rule lists, URL tester, quick add, edit, pause,
-// lock, lint fixes and import/export. Journey and Settings tabs live in
-// options-journey.js and options-settings.js and share the globals below.
+// options.js — the Rule Book: rule lists, quick add, edit, pause, lock, lint
+// fixes, plus the URL tester and import/export (both shown in Settings).
+// Journey and Settings tabs live in options-journey.js and options-settings.js
+// and share the globals below.
 // The page writes chrome.storage directly; background.js reacts to changes.
 
 const RE = self.RulesEngine;
@@ -95,6 +96,7 @@ function endPassesFor(ruleIds) {
 // Tabs
 ////////////////////////////////////////////////////////////////////////////
 
+let showTab = () => {};
 function setupTabs() {
   const tabs = [...document.querySelectorAll('.tab')];
   const show = (name) => {
@@ -106,6 +108,7 @@ function setupTabs() {
     try { history.replaceState(null, '', `#${name}`); } catch {}
     document.dispatchEvent(new CustomEvent('gohh:tab', { detail: name }));
   };
+  showTab = show;
   tabs.forEach((t) => t.addEventListener('click', () => show(t.dataset.tab)));
   const initial = location.hash.slice(1);
   show(tabs.some((t) => t.dataset.tab === initial) ? initial : 'rules');
@@ -355,10 +358,14 @@ function buildRow(list, rule, now, nested) {
     actions = btn('edit', 'Edit') + btn('delete', 'Delete') + addBtn;
   }
 
+  if (list === 'blocked' && (rule.cooldownMinutes != null || rule.pendingCooldown)) {
+    meta.push(`<span class="badge badge-custom" title="This rule has its own pause cooldown">⏳ ${escapeHtml(SH.formatMinutes(SH.ruleCooldownMinutes(rule, settings, now)))} cooldown · custom</span>`);
+  }
+
   if (list === 'pauseAndThink') {
     const wait = SH.resolveWaitSeconds(rule, settings);
-    const custom = rule.waitSeconds != null || rule.passMode;
-    meta.push(`<span class="badge badge-gate" title="Pass lasts ${escapeHtml(SH.describePass(rule, settings))}">⏱ ${wait}s wait${custom ? ' · custom' : ''}</span>`);
+    const custom = rule.waitSeconds != null || rule.passMode || rule.passMinutes != null;
+    meta.push(`<span class="badge ${custom ? 'badge-custom' : 'badge-gate'}" title="Access lasts ${escapeHtml(SH.describePass(rule, settings))}">⏱ ${wait}s wait${custom ? ' · custom timing' : ''}</span>`);
     const session = state.pauseSessions.find((s) => s.ruleId === rule.id);
     if (session) {
       const ends = SH.sessionEndsAt(session);
@@ -378,7 +385,7 @@ function buildRow(list, rule, now, nested) {
   const domainLine = nested ? sub : `${escapeHtml(domainKey(rule.domain) || rule.domain)} ${sub}`;
   const text = textOf(list, rule);
   const textLine = text
-    ? `<div class="rule-message" title="${escapeHtml(text)}">${list === 'blocked' ? `“${escapeHtml(text)}”` : `📝 ${escapeHtml(text)}`}</div>`
+    ? `<div class="rule-message" title="${escapeHtml(text)}">${list === 'blocked' ? `“${escapeHtml(text)}”` : list === 'pauseAndThink' ? `⌨ Type: ${escapeHtml(text)}` : `📝 ${escapeHtml(text)}`}</div>`
     : '';
   const lints = lintHtml(list, rule, locked);
 
@@ -400,13 +407,16 @@ function buildEditForm(list, rule) {
   const dayToggles = DAY_NAMES.map((n, i) => `<label class="day"><input type="checkbox" class="edit-day" value="${i}" ${days.includes(i) ? 'checked' : ''} /><span>${n}</span></label>`).join('');
   const pt = list === 'pauseAndThink';
   const passModeOpt = (v, label) => `<option value="${v}" ${rule.passMode === v || (!rule.passMode && v === '') ? 'selected' : ''}>${label}</option>`;
+  const MODE_LABEL = { activity: 'while I’m on the site', fixed: 'a fixed time', endOfDay: 'until the end of today' };
+  const pendingCd = rule.pendingCooldown && rule.pendingCooldown.effectiveAt > Date.now() ? rule.pendingCooldown : null;
+  const cdValue = rule.pendingCooldown ? rule.pendingCooldown.minutes : rule.cooldownMinutes; // the configured target
 
   return `
     <div class="edit-form">
       <div class="edit-row edit-main">
         <input type="text" class="edit-domain" placeholder="site" value="${escapeHtml(rule.domain)}" aria-label="Site" />
         <input type="text" class="edit-substring" placeholder="word in URL (optional)" value="${escapeHtml(rule.substring || '')}" aria-label="Word in URL" />
-        <input type="text" class="edit-text" placeholder="${list === 'blocked' ? 'message on the gate (optional)' : 'note (optional)'}" value="${escapeHtml(text)}" aria-label="${list === 'blocked' ? 'Message' : 'Note'}" />
+        <input type="text" class="edit-text" placeholder="${list === 'blocked' ? 'message on the gate (optional)' : pt ? 'phrase to type instead of “Yes I Am Sure” (optional)' : 'note (optional)'}" value="${escapeHtml(text)}" aria-label="${list === 'blocked' ? 'Message' : pt ? 'Phrase to type' : 'Note'}" />
       </div>
       <div class="edit-row edit-schedule">
         <label class="check"><input type="checkbox" class="edit-sched-on" ${sched ? 'checked' : ''} /> Only active on a schedule</label>
@@ -418,14 +428,20 @@ function buildEditForm(list, rule) {
       </div>
       ${pt ? `
       <div class="edit-row edit-gate">
-        <label>Wait <input type="number" class="edit-wait" min="3" max="300" placeholder="${settings.pauseWaitSeconds}" value="${rule.waitSeconds ?? ''}" /> s</label>
-        <label>Pass <select class="edit-pass-mode">
-          ${passModeOpt('', 'default')}
-          ${passModeOpt('activity', 'while on the site')}
-          ${passModeOpt('fixed', 'fixed time')}
-          ${passModeOpt('endOfDay', 'until end of day')}
-        </select></label>
-        <label>Minutes <input type="number" class="edit-pass-min" min="1" max="720" placeholder="default" value="${rule.passMinutes ?? ''}" /></label>
+        <span class="sentence">Wait <input type="number" class="edit-wait" min="3" max="300" placeholder="${settings.pauseWaitSeconds}" value="${rule.waitSeconds ?? ''}" aria-label="Wait seconds" /> s before typing.</span>
+        <span class="sentence">After going through, access lasts <select class="edit-pass-mode" aria-label="Access lasts">
+          ${passModeOpt('', `default (${MODE_LABEL[settings.passMode]})`)}
+          ${passModeOpt('activity', MODE_LABEL.activity)}
+          ${passModeOpt('fixed', MODE_LABEL.fixed)}
+          ${passModeOpt('endOfDay', MODE_LABEL.endOfDay)}
+        </select></span>
+        <span class="sentence edit-pass-min-wrap"><span class="edit-pass-min-label"></span> <input type="number" class="edit-pass-min" min="1" max="720" placeholder="" value="${rule.passMinutes ?? ''}" aria-label="Minutes" /> min.</span>
+        <span class="hint">Leave a box empty to use the default from Settings.</span>
+      </div>` : ''}
+      ${list === 'blocked' ? `
+      <div class="edit-row edit-gate">
+        <span class="sentence">Wait <input type="number" class="edit-cooldown" min="5" max="1440" placeholder="${SH.effectiveCooldownMinutes(settings, Date.now())}" value="${cdValue ?? ''}" aria-label="Pause cooldown minutes" /> min before this rule can be paused.</span>
+        <span class="hint">${pendingCd ? `Now ${SH.formatMinutes(SH.ruleCooldownMinutes(rule, settings, Date.now()))}; the shorter value applies at ${formatDate(pendingCd.effectiveAt)}. ` : ''}Empty = the default. A shorter cooldown only applies after the current one has passed.</span>
       </div>` : ''}
       <div class="edit-actions">
         <button class="btn btn-ghost btn-small" type="button" data-action="cancel-edit" data-list="${list}" data-id="${rule.id}">Cancel</button>
@@ -442,6 +458,19 @@ function attachEditEvents(li, id, list) {
   li.querySelector('.edit-sched-on').addEventListener('change', (e) => {
     li.querySelector('.sched-fields').hidden = !e.target.checked;
   });
+  const modeSel = li.querySelector('.edit-pass-mode');
+  if (modeSel) {
+    // The minutes box means different things per access type; say which.
+    const syncMinutes = () => {
+      const mode = modeSel.value || settings.passMode;
+      const wrap = li.querySelector('.edit-pass-min-wrap');
+      wrap.hidden = mode === 'endOfDay';
+      li.querySelector('.edit-pass-min-label').textContent = mode === 'fixed' ? 'Access ends after' : 'Access ends once I’ve been off the site for';
+      li.querySelector('.edit-pass-min').placeholder = String(mode === 'fixed' ? settings.passFixedMinutes : settings.passGraceMinutes);
+    };
+    modeSel.addEventListener('change', syncMinutes);
+    syncMinutes();
+  }
   li.querySelectorAll('input[type="text"], input[type="number"]').forEach((input) => {
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') { e.preventDefault(); saveEdit(li, id, list); }
@@ -577,10 +606,21 @@ async function saveEdit(li, id, list) {
     rule.passMinutes = mins === '' ? null : SH.clamp(mins, SH.LIMITS.passFixedMinutes);
   }
 
+  if (list === 'blocked') {
+    const raw = li.querySelector('.edit-cooldown').value.trim();
+    const wanted = raw === '' ? null : SH.clamp(raw, SH.LIMITS.blockedCooldownMinutes);
+    const shown = rule.pendingCooldown ? rule.pendingCooldown.minutes : rule.cooldownMinutes ?? null;
+    if (wanted !== shown) {
+      const before = SH.ruleCooldownMinutes(rule, settings, Date.now());
+      Object.assign(rule, SH.requestRuleCooldown(rule, wanted, settings, Date.now()));
+      if (rule.pendingCooldown) toast(`Shorter cooldown applies at ${formatDate(rule.pendingCooldown.effectiveAt)} (now ${SH.formatMinutes(before)}).`);
+    }
+  }
+
   editingRuleId = null;
   await save();
   render();
-  toast('Rule updated.');
+  if (!(list === 'blocked' && rule.pendingCooldown && rule.pendingCooldown.effectiveAt > Date.now())) toast('Rule updated.');
 }
 
 async function deleteRule(list, id) {
@@ -691,12 +731,14 @@ document.getElementById('testerForm').addEventListener('submit', (e) => {
   out.hidden = false;
 });
 
-function jumpToRule(id) {
-  const { rule } = findRule(id);
+function jumpToRule(id, mode) {
+  const { list, rule } = findRule(id);
   if (!rule) return;
+  showTab('rules');
   filterText = '';
   document.getElementById('filterInput').value = '';
   flashRuleId = id;
+  if (mode === 'edit' && !(list === 'blocked' && isLocked(rule))) { editingRuleId = id; quickAddKey = null; }
   render();
 }
 
@@ -721,7 +763,7 @@ function openReflectModal(ruleId, step) {
   const rule = state.blocked.find((r) => r.id === ruleId);
   if (!rule || isLocked(rule)) return;
   pendingReflect = { ruleId, step };
-  const cooldown = SH.effectiveCooldownMinutes(settings, Date.now());
+  const cooldown = SH.ruleCooldownMinutes(rule, settings, Date.now());
   reflectTitle.textContent = step === 1 ? 'Why are you pausing this rule?' : 'Final check — why are you pausing this rule?';
   reflectSub.textContent = step === 1
     ? `A ${SH.formatMinutes(cooldown)} cooldown starts after this. Then you’ll be asked once more.`
@@ -754,7 +796,7 @@ reflectConfirm.addEventListener('click', async () => {
   const now = Date.now();
 
   if (step === 1) {
-    const minutes = SH.effectiveCooldownMinutes(settings, now);
+    const minutes = SH.ruleCooldownMinutes(rule, settings, now);
     const readyAt = now + minutes * SH.MINUTE;
     rule.pendingPause = { stage: 'countdown', reason1: reason, startedAt: now, readyAt };
     delete rule.pendingRemoval;
@@ -774,7 +816,7 @@ reflectConfirm.addEventListener('click', async () => {
     await save();
     chrome.alarms.clear(ALARM_COUNTDOWN_PREFIX + ruleId);
     chrome.alarms.clear(LEGACY_ALARM_COUNTDOWN_PREFIX + ruleId);
-    chrome.runtime.sendMessage({ action: 'RECORD_EVENT', event: 'rule-paused' }).catch(() => {});
+    chrome.runtime.sendMessage({ action: 'RECORD_EVENT', event: 'rule-paused', ruleId }).catch(() => {});
     toast(until ? `Rule paused until ${formatDate(until)}.` : 'Rule paused until you resume it.');
   }
   closeReflectModal();
@@ -819,6 +861,21 @@ document.getElementById('importFile').addEventListener('change', async (e) => {
     (locked.length ? `\n\nYour ${locked.length} locked rule(s) stay as they are until their lock ends.` : '')
   );
   if (!ok) { e.target.value = ''; return; }
+
+  // An imported per-rule cooldown can't be shorter than the current default
+  // (same reason the global cooldown is never imported).
+  const floor = SH.effectiveCooldownMinutes(settings, now);
+  for (const r of book.blocked) if (r.cooldownMinutes != null && r.cooldownMinutes < floor) r.cooldownMinutes = null;
+
+  // A rule that already exists keeps its id and creation date, so its
+  // streak and stats carry over.
+  for (const list of LISTS) {
+    const old = new Map(state[list].map((r) => [ruleKey(r), r]));
+    for (const r of book[list]) {
+      const prev = old.get(ruleKey(r));
+      if (prev) { r.id = prev.id; if (prev.createdAt) r.createdAt = prev.createdAt; }
+    }
+  }
 
   // Locked rules survive an import, so Import can't be used to dodge a lock.
   const lockedKeys = new Set(locked.map(ruleKey));

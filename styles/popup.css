@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@700&family=Inter:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600&display=swap');
 
 :root {
   --ink: #0b0f14;
@@ -30,7 +30,7 @@ body { padding: 0.9rem; display: flex; flex-direction: column; gap: 0.75rem; }
 
 .head { display: flex; align-items: center; gap: 0.5rem; }
 .head img { border-radius: 5px; }
-.brand { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 700; font-size: 1.1rem; }
+.brand { font-family: 'Space Grotesk', 'Inter', system-ui, sans-serif; font-weight: 700; font-size: 1.1rem; }
 
 .site-card {
   background: var(--ink-2);
@@ -53,6 +53,20 @@ body { padding: 0.9rem; display: flex; flex-direction: column; gap: 0.75rem; }
 
 .actions { display: flex; flex-direction: column; gap: 0.4rem; }
 .actions[hidden] { display: none; }
+.target-fields { display: flex; flex-direction: column; gap: 0.4rem; background: var(--ink-2); border: 1px solid var(--line); border-radius: 10px; padding: 0.6rem 0.7rem; }
+.target-fields label { display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.7rem; color: var(--mist); }
+.target-fields em { font-style: normal; color: var(--mist-dim); }
+.target-fields input {
+  background: var(--ink-3);
+  border: 1px solid var(--line);
+  color: var(--parchment);
+  border-radius: 7px;
+  padding: 0.4rem 0.55rem;
+  font: 500 0.8rem 'Inter', sans-serif;
+}
+.target-fields input:focus { outline: none; border-color: var(--gold); }
+.preview { margin: 0.1rem 0 0; font-size: 0.74rem; color: var(--gold-bright); overflow-wrap: anywhere; }
+
 .act {
   appearance: none;
   text-align: left;
@@ -86,10 +100,6 @@ body { padding: 0.9rem; display: flex; flex-direction: column; gap: 0.75rem; }
 .pass-end { appearance: none; border: 1px solid var(--ember); background: transparent; color: var(--ember-bright); border-radius: 6px; font: 500 0.72rem 'Inter', sans-serif; padding: 0.2rem 0.5rem; cursor: pointer; }
 .pass-end:hover { background: var(--ember); color: var(--parchment); }
 
-.today { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem; }
-.today div { background: var(--ink-2); border: 1px solid var(--line); border-radius: 10px; padding: 0.5rem; text-align: center; display: flex; flex-direction: column; }
-.today strong { font-family: "Cormorant Garamond", Georgia, serif; font-size: 1.5rem; line-height: 1.1; font-variant-numeric: lining-nums tabular-nums; }
-.today span { font-size: 0.7rem; color: var(--mist); }
 
 .foot { display: flex; justify-content: space-between; border-top: 1px solid var(--line); padding-top: 0.6rem; }
 .link { appearance: none; border: 0; background: none; color: var(--gold-bright); font: 500 0.8rem 'Inter', sans-serif; cursor: pointer; padding: 0.2rem 0.3rem; border-radius: 4px; }

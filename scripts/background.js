@@ -64,11 +64,15 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     await seedFromBundledFile()
   }
   await migrateStorage(details.reason)
+  await settleLeftoverGates(false)
+  await markExistingTabsUsed()
   await rebuildDnrRules()
   await reconcileAllAlarms()
 })
 
 chrome.runtime.onStartup.addListener(async () => {
+  await settleLeftoverGates(true)
+  await markExistingTabsUsed()
   await rebuildDnrRules()
   await reconcileAllAlarms()
 })
@@ -290,9 +294,12 @@ chrome.webNavigation.onHistoryStateUpdated.addListener(async (details) => {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const handlers = {
     ACTIVATE_PAUSE_SESSION: handleActivatePauseSession,
-    RECORD_EVENT: (m) => recordStat(m.event).then(() => ({ success: true })),
+    RECORD_EVENT: (m) => recordStat(m.event, m.ruleId || null).then(() => ({ success: true })),
     END_PASS: handleEndPass,
+    GATE_OPENED: handleGateOpened,
+    RESOLVE_GATE: handleResolveGate,
     QUICK_ADD: handleQuickAdd,
+    CLEAR_STATS: handleClearStats,
   }
   const handler = message && handlers[message.action]
   if (!handler) return
@@ -305,7 +312,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return true // async response
 })
 
-async function handleActivatePauseSession({ ruleId, url }) {
+async function handleActivatePauseSession({ ruleId, url }, sender) {
   const { pauseAndThink, settings } = await getState()
 
   // A pass is only ever granted for a live Pause & Think rule. (v1 minted a
@@ -319,7 +326,9 @@ async function handleActivatePauseSession({ ruleId, url }) {
 
   const pass = SH.resolvePass(target, settings, now)
   if (url && !/^https?:\/\//i.test(url)) return { success: false, error: "Not a web page." }
-  await mutateSessions((sessions) => [
+  const tabId = sender && sender.tab && sender.tab.id
+  if (tabId != null) await resolveGate(tabId, false)
+  const { before: prevSessions } = await mutateSessions((sessions) => [
     ...sessions.filter((s) => s.ruleId !== target.id),
     {
       ruleId: target.id,
@@ -332,14 +341,16 @@ async function handleActivatePauseSession({ ruleId, url }) {
       expiresAt: pass.expiresAt || null,
     },
   ])
-  await recordStat("go-through")
+  recordEndedPasses(prevSessions.filter((s) => s.ruleId === target.id), [])
+  await recordStat("go-through", target.id)
   await ensureHeartbeatAlarm()
   await rebuildDnrRules()
   return { success: true, pass: pass.label }
 }
 
 async function handleEndPass({ ruleId }) {
-  await mutateSessions((sessions) => sessions.filter((s) => s.ruleId !== ruleId))
+  const { before, after } = await mutateSessions((sessions) => sessions.filter((s) => s.ruleId !== ruleId))
+  recordEndedPasses(before, after)
   await rebuildDnrRules({ regate: true })
   return { success: true }
 }
@@ -366,14 +377,209 @@ async function handleQuickAdd({ list, domain, substring, note, tabId, url }) {
 // Stats (serialized so concurrent gate pages can't lose increments)
 ////////////////////////////////////////////////////////////////////////////
 
-function recordStat(event) {
+// ruleId is optional; with it the event also counts toward that rule's streak
+// and leaderboard row.
+function recordStat(event, ruleId) {
   statsChain = statsChain
     .then(async () => {
-      const { stats } = await chrome.storage.local.get(["stats"])
-      await chrome.storage.local.set({ stats: SH.recordEvent(stats, event, Date.now()) })
+      const { stats, blocked = [], pauseAndThink = [] } = await chrome.storage.local.get(["stats", "blocked", "pauseAndThink"])
+      let info = null
+      if (ruleId) {
+        const b = blocked.find((r) => r.id === ruleId)
+        const p = b ? null : pauseAndThink.find((r) => r.id === ruleId)
+        const rule = b || p
+        info = { ruleId, list: b ? "blocked" : p ? "pauseAndThink" : null, label: rule ? SH.ruleLabelOf(rule) : "", createdAt: rule && rule.createdAt }
+      }
+      await chrome.storage.local.set({ stats: SH.recordEvent(stats, event, Date.now(), info) })
     })
     .catch((err) => console.error(LOG, "Stats write failed:", err))
   return statsChain
+}
+
+// Clears the last hour, today (since midnight) or all stats.
+function handleClearStats({ range }) {
+  if (!["hour", "day", "all"].includes(range)) return Promise.resolve({ success: false, error: "Unknown range" })
+  const run = statsChain.then(async () => {
+    const now = Date.now()
+    const midnight = new Date(now).setHours(0, 0, 0, 0)
+    const from = range === "all" ? "all" : range === "day" ? midnight : now - 60 * 60 * 1000
+    const { stats } = await chrome.storage.local.get(["stats"])
+    await chrome.storage.local.set({ stats: SH.clearStats(stats, from, now) })
+  })
+  statsChain = run.catch((err) => console.error(LOG, "Stats clear failed:", err))
+  return run.then(() => ({ success: true }))
+}
+
+// Adds the time spent on passes that just ended to the stats.
+function recordEndedPasses(before, after) {
+  const still = new Set((after || []).map((s) => s.ruleId))
+  const ended = (before || []).filter((s) => !still.has(s.ruleId))
+  if (!ended.length) return statsChain
+  statsChain = statsChain
+    .then(async () => {
+      const now = Date.now()
+      let { stats } = await chrome.storage.local.get(["stats"])
+      for (const s of ended) {
+        stats = SH.recordPassTime(stats, s.ruleId, SH.passMinutesUsed(s, now), now, { label: SH.ruleLabelOf(s) })
+      }
+      await chrome.storage.local.set({ stats })
+    })
+    .catch((err) => console.error(LOG, "Pass time write failed:", err))
+  return statsChain
+}
+
+////////////////////////////////////////////////////////////////////////////
+// Gate tabs
+//   - A Blocked gate in a tab that a link just opened closes at once (it
+//     counts as a gate held). Tabs opened from a link have openerTabId; the
+//     first real page they commit marks them "used" (storage.session).
+//   - A Pause & Think gate tab registers itself in `openGates`
+//     (storage.local, so leftovers survive a browser quit). Closing it, or
+//     leaving it for another page, without going through counts as a
+//     walk-away.
+////////////////////////////////////////////////////////////////////////////
+
+const closingTabs = new Set() // in-flight closes only; dedupes the two close paths
+const GATE_PAGES = ["pages/pause.html", "pages/blocked.html"].map((p) => chrome.runtime.getURL(p))
+const isGateUrl = (url) => GATE_PAGES.some((g) => String(url || "").startsWith(g))
+
+async function isFreshLinkTab(tabId) {
+  try {
+    const tab = await chrome.tabs.get(tabId)
+    if (tab.openerTabId == null) return false
+    const { usedTabs = {} } = await chrome.storage.session.get(["usedTabs"])
+    return !usedTabs[tabId]
+  } catch {
+    return false
+  }
+}
+
+async function closeFreshBlockedTab(tabId, ruleId) {
+  if (closingTabs.has(tabId)) return true
+  closingTabs.add(tabId)
+  try {
+    await chrome.tabs.remove(tabId)
+  } catch {
+    closingTabs.delete(tabId)
+    return false
+  }
+  await recordStat("blocked-view", ruleId)
+  flashBadge()
+  setTimeout(() => closingTabs.delete(tabId), 10000)
+  return true
+}
+
+// Cosmetic only: a short "held" mark on the toolbar icon. A plain timeout is
+// fine here (nothing depends on it if the worker sleeps first).
+function flashBadge() {
+  chrome.action.setBadgeBackgroundColor({ color: "#c25050" })
+  chrome.action.setBadgeText({ text: "✕" })
+  setTimeout(() => chrome.action.getBadgeText({}).then((t) => { if (t === "✕") chrome.action.setBadgeText({ text: "" }) }), 2500)
+}
+
+let usedChain = Promise.resolve()
+function mutateUsedTabs(fn) {
+  const run = usedChain.then(async () => {
+    const { usedTabs = {} } = await chrome.storage.session.get(["usedTabs"])
+    if (fn(usedTabs) !== false) await chrome.storage.session.set({ usedTabs })
+  })
+  usedChain = run.catch(() => {})
+  return run
+}
+
+let gateChain = Promise.resolve()
+function mutateGates(fn) {
+  const run = gateChain.then(async () => {
+    const { openGates = {} } = await chrome.storage.local.get(["openGates"])
+    const next = Object.assign({}, openGates)
+    const out = await fn(next)
+    await chrome.storage.local.set({ openGates: next })
+    return out
+  })
+  gateChain = run.catch((err) => console.error(LOG, "Gate tracking failed:", err))
+  return run
+}
+
+// Removes a tab's open gate; with countWalkAway, records the walk-away.
+async function resolveGate(tabId, countWalkAway) {
+  const entry = await mutateGates((gates) => {
+    const e = gates[tabId]
+    delete gates[tabId]
+    return e
+  })
+  if (entry && countWalkAway) await recordStat("walk-away", entry.ruleId)
+  return entry
+}
+
+chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
+  if (details.frameId !== 0 || !/^https?:/i.test(details.url)) return
+  if (!(await isFreshLinkTab(details.tabId))) return
+  const ex = RE.explainUrl(details.url, await getState(), Date.now())
+  if (ex.verdict === "blocked") await closeFreshBlockedTab(details.tabId, ex.rule && ex.rule.id)
+})
+
+chrome.webNavigation.onCommitted.addListener(async (details) => {
+  if (details.frameId !== 0) return
+  if (isGateUrl(details.url)) return
+  await mutateUsedTabs((used) => {
+    if (used[details.tabId]) return false
+    used[details.tabId] = 1
+  })
+  // Left a Pause & Think gate for some other page without going through.
+  const { openGates = {} } = await chrome.storage.local.get(["openGates"])
+  if (openGates[details.tabId]) await resolveGate(details.tabId, true)
+})
+
+chrome.tabs.onRemoved.addListener(async (tabId) => {
+  await mutateUsedTabs((used) => {
+    if (!used[tabId]) return false
+    delete used[tabId]
+  })
+  const { openGates = {} } = await chrome.storage.local.get(["openGates"])
+  if (openGates[tabId]) await resolveGate(tabId, true)
+})
+
+async function handleGateOpened({ kind, ruleId }, sender) {
+  const tabId = sender && sender.tab && sender.tab.id
+  if (tabId == null) return { success: true }
+  if (kind === "blocked") {
+    if (await isFreshLinkTab(tabId)) return { success: true, closed: await closeFreshBlockedTab(tabId, ruleId) }
+    return { success: true, closed: false }
+  }
+  if (kind === "pause") {
+    await mutateGates((gates) => {
+      gates[tabId] = { ruleId: ruleId || null, at: (gates[tabId] && gates[tabId].at) || Date.now() }
+    })
+  }
+  return { success: true }
+}
+
+async function handleResolveGate({ outcome, ruleId }, sender) {
+  const tabId = sender && sender.tab && sender.tab.id
+  if (tabId == null) return { success: false }
+  const entry = await resolveGate(tabId, false)
+  if (outcome === "walk-away") await recordStat("walk-away", (entry && entry.ruleId) || ruleId || null)
+  return { success: true }
+}
+
+// Tabs that already exist (restored, or open before an install/reload) are
+// never "fresh", so a later navigation in them can't auto-close them.
+async function markExistingTabsUsed() {
+  try {
+    const tabs = await chrome.tabs.query({})
+    await mutateUsedTabs((used) => {
+      for (const t of tabs) used[t.id] = 1
+    })
+  } catch {}
+}
+
+// Gate tabs open when the browser quit were walked away from. Extension
+// reloads close our pages too, but those aren't choices, so they're dropped.
+async function settleLeftoverGates(countWalkAways) {
+  const { openGates = {} } = await chrome.storage.local.get(["openGates"])
+  const entries = Object.values(openGates)
+  await chrome.storage.local.set({ openGates: {} })
+  if (countWalkAways) for (const e of entries) await recordStat("walk-away", e.ruleId)
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -452,7 +658,10 @@ async function expireSessions() {
     const remaining = sessions.filter((s) => !SH.sessionExpired(s, now))
     return remaining.length !== sessions.length ? remaining : null
   })
-  if (after.length !== before.length) await rebuildDnrRules({ regate: true })
+  if (after.length !== before.length) {
+    recordEndedPasses(before, after)
+    await rebuildDnrRules({ regate: true })
+  }
   if (after.length) await ensureHeartbeatAlarm()
   else await chrome.alarms.clear(ALARM_PAUSE_HEARTBEAT)
 }
