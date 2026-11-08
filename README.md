@@ -1,98 +1,167 @@
-# Gates Of Heaven & Hell
+# Gates Of Heaven & Hell: A No-Bypass Website Blocker for Chrome
 
-![Screenshot](Screenshot.png)
+[![Manifest V3](https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4?logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/develop/migrate/what-is-mv3)
+[![License: MIT](https://img.shields.io/badge/License-MIT-c9a227.svg)](LICENSE)
+[![Dependencies: none](https://img.shields.io/badge/dependencies-none-2ea44f.svg)](#development)
+[![Privacy: local only](https://img.shields.io/badge/privacy-100%25%20local-8b2e2e.svg)](#privacy)
 
-A Manifest V3 Chrome extension version of the original Tampermonkey blocker —
-rebuilt on `declarativeNetRequest` instead of polling/click-interception, with
-a no-bypass blocked page, and lockable/friction-gated rule removal.
+**Gates Of Heaven & Hell is a free, open-source Chrome extension that blocks distracting and harmful websites, and is built so you can't talk yourself out of it.** Blocked sites hit a Hell gate with no "continue anyway" button. Habit sites hit a Pause & Think crossroads where you wait and type `Yes I Am Sure` before going in. Walking away opens the gates of Heaven.
+
+It's a site blocker, distraction blocker and focus tool for people who have tried the one-click kind and know how quickly it gets switched off.
+
+| The Hell gate (blocked sites) | The crossroads (Pause & Think) |
+|---|---|
+| ![The Hell gate: an iron portcullis over a fire-lit pit, with no way through](docs/screenshots/gate-hell.png) | ![The Pause & Think crossroads: turn back through the Heaven gate or wait to go through](docs/screenshots/gate-pause.png) |
 
 ## Project Overview
 
-Gates Of Heaven & Hell is a website blocker built to be hard to cheat. Most
-blockers fail because turning them off takes one click in a weak moment, so
-this one puts friction in the way of giving in:
+Most website blockers fail because turning them off takes one click in a weak moment. This one puts friction where it matters:
 
-- **Blocked sites** are stopped by Chrome itself before the page loads, and
-  replaced with a calm reminder page that has no "continue anyway" button.
-- **"Pause & Think" sites** aren't banned outright. You get a short pause and
-  have to type "Yes I Am Sure" to go through, which turns a habit into a choice.
-- **Turning a block off** means writing why, waiting 30 minutes, and confirming
-  again. Rules can also be **locked** until Friday evening so they can't be
-  touched at all.
-- **Allowed exceptions** (e.g. one useful page on a blocked site) always win.
+- **Blocked sites** are stopped by Chrome itself (`declarativeNetRequest`) before the page loads, and replaced with the Hell gate. There's no bypass button, only **Turn Back**.
+- **Pause & Think sites** aren't banned. You get a reflection wait, then type `Yes I Am Sure` to go through, which turns a habit into a choice. The pass lasts while you stay on the site (or a fixed time), then open tabs go back to the gate.
+- **Turning a block off** means writing why, waiting through a cooldown (30 minutes by default) and confirming again. You choose how long the pause lasts and it resumes on its own. Rules can also be **locked** until Friday evening so they can't be touched at all.
+- **Walking away** plays the Heaven gate and counts toward your **streak**. The Journey tab shows gates held, slips and time reclaimed over 30 days.
+- **Exceptions** (one useful page on a blocked site) always win.
 
-Your rules live only in Chrome's local storage on your machine; there are no
-accounts and no servers.
+Everything lives in Chrome's local storage on your machine. No accounts, no servers, no tracking.
 
-## Install (unpacked)
+## Features
 
-1. Put your real rules into `bookOfLinks.jsonc` at the root of this folder —
-   same `["domain", "substring"]` array format you already use. It's only
-   read **once**, on first install, to seed the extension.
-2. Go to `chrome://extensions`.
-3. Turn on **Developer mode** (top right).
-4. Click **Load unpacked** and select this folder
-   (`Gates Of Heaven & Hell`).
-5. Click the extension's toolbar icon any time to open the **Rule Book**
-   (options page) and manage rules from then on.
+- 🔥 **Hell gate for blocked sites**: blocked before the page loads, with no bypass. Custom message per rule.
+- ⚖️ **Pause & Think crossroads**: a reflection wait (it only counts down while you're looking), an exact typed phrase, then a pass that ends when you leave the site, after a fixed time or at the end of the day.
+- 😇 **Heaven gate when you walk away**: golden light, an affirmation and today's tally, then the tab closes.
+- 🔒 **Hard locks**: a locked rule can't be paused, edited, deleted or wiped by an import until the lock ends.
+- ⏳ **Friction-gated pausing**: two written reasons plus a cooldown. Shortening the cooldown only takes effect after the current one has passed.
+- 🕘 **Schedules**: rules can be active only on chosen days and hours, including overnight windows like 22:00–06:00.
+- 🧪 **URL tester**: paste a link and see whether it will be gated, by which rule, and why it isn't when it isn't.
+- 🩺 **Rule health checks**: catches rules that won't do what you meant (a label typed into the substring box, duplicates, rules an exception always overrides) with one-click fixes.
+- ➕ **Quick add**: add many words to an existing site (like `google.com/search`) at once, comma-separated.
+- 🧭 **Toolbar popup**: this page's status, one-click "Block this site" or "Pause & Think", live pass timers with **End pass**, today's stats.
+- 📈 **Journey dashboard**: gates held, slips, clean streak, best streak, walk-away rate and a 30-day chart.
+- 🔍 **Search engine aware**: Google search rules match only your search text, not Google's tracking parameters. YouTube searches are caught before the results page flashes.
+- 🧩 **Single-page apps covered**: in-app navigation (Reddit, YouTube, X) is gated too, not just full page loads.
+- 🌍 **Universal or faith-based reminders**: reflective lines for anyone by default, or Islamic reminders if you prefer.
+- 🕶️ **Incognito support** with split mode, and **JSONC import/export** for backups.
 
-## Structure
+## Screenshots
+
+| Rule Book with the URL tester | Journey dashboard |
+|---|---|
+| ![Rule Book showing the URL tester explaining why a site is not gated](docs/screenshots/rulebook-tester.png) | ![Journey tab with stat tiles and a 30-day chart of gates held and slips](docs/screenshots/rulebook-journey.png) |
+
+| Walking away | Toolbar popup |
+|---|---|
+| ![The Heaven gate: golden light and an affirmation after turning back](docs/screenshots/gate-heaven.png) | ![Toolbar popup showing the current site's status, quick actions and open passes](docs/screenshots/popup.png) |
+
+## Install
+
+Not on the Chrome Web Store yet, so load it unpacked:
+
+1. Download or clone this repository.
+2. *(Optional)* Put your rules in `bookOfLinks.jsonc` at the repo root (format below). It's read once, on first install.
+3. Open `chrome://extensions` and turn on **Developer mode**.
+4. Click **Load unpacked** and pick the repo folder.
+5. Pin the extension and click its icon for the popup, or open the **Rule Book** from there.
+
+Built and tested in Chrome. Other Chromium browsers with Manifest V3 support (Edge, Brave) should work the same way.
+
+## Writing rules
+
+Each rule is a **site** plus an optional **word in the URL**:
+
+| Site | Word | Gates |
+|---|---|---|
+| `reddit.com` | | all of reddit.com and its subdomains |
+| `youtube.com` | `shorts` | YouTube URLs containing "shorts" |
+| `google.com/search` | `casino` | Google searches whose text contains "casino" |
+| `*` | `casino` | any site whose URL contains "casino" |
+
+Sites match exactly or as a parent domain, so `x.com` never catches `dropbox.com`. Spaces in a word match `+`, `%20` or a space.
+
+Priority, highest first: **Exceptions** › open passes › **Pause & Think** › **Blocked**.
+
+### Import / export format (JSONC)
+
+```jsonc
+{
+  "BLOCKED": [
+    ["youtube.com", "shorts", "Not today."],          // site, word, message
+    ["reddit.com"]
+  ],
+  "PAUSE_AND_THINK": [
+    ["linkedin.com", "", "Job search only"],          // site, word, note
+    { "domain": "x.com", "passMode": "fixed", "passMinutes": 10,
+      "schedule": { "days": [1, 2, 3, 4, 5], "start": "09:00", "end": "17:00" } }
+  ],
+  "EXCLUDED": [
+    ["youtube.com/results", "recipe"]
+  ]
+}
+```
+
+Old array-only files import unchanged. Importing never removes a locked rule.
+
+## How it compares
+
+| | Typical blocker | Gates Of Heaven & Hell |
+|---|---|---|
+| Turn it off | One click | Two written reasons + cooldown, or impossible while locked |
+| Blocked page | "Continue anyway" link | No way through |
+| Soft limits | Rarely | Pause & Think with a timed pass |
+| Rewards walking away | No | Heaven gate, streaks, 30-day chart |
+| Catches in-app navigation | Often not | Yes |
+| Data | Often a cloud account | Local only |
+
+## FAQ
+
+**Can I bypass a blocked site?**
+Not from the gate. You can pause a Blocked rule, but only after two written reasons and a cooldown, and never while it's locked.
+
+**Why isn't a site being blocked?**
+Paste the URL into the **URL tester** in the Rule Book. It tells you which rule applies or why none does. A common cause is text in the "word in URL" box that never appears in the address. The rule health check flags that and offers to move it into the note.
+
+**Does it work in incognito?**
+Yes. Allow it in incognito from `chrome://extensions`. It runs in split mode, so incognito gets its own copy of the gate pages.
+
+**Does it send my browsing anywhere?**
+No. There are no network calls besides loading Google Fonts on the extension's own pages.
+
+**Is it religious?**
+No. Reminders are universal by default. A faith-based (Islamic) set is available in Settings.
+
+## Privacy
+
+Rules, passes, settings and stats are stored in `chrome.storage.local` on your device. Nothing is collected, synced or sent anywhere.
+
+## Development
+
+Plain JavaScript, HTML and CSS: no build step, no dependencies.
 
 ```
-Gates Of Heaven & Hell/
-├── manifest.json            MV3 manifest ("incognito": "split")
-├── bookOfLinks.jsonc         First-install seed file (your rules)
-├── pages/
-│   ├── blocked.html         The no-bypass blocked page
-│   ├── pause.html           The Pause & Think reflection gate
-│   └── options.html         The Rule Book UI
-├── styles/
-│   ├── blocked.css          Blocked page styling & gate animation
-│   ├── pause.css            Pause & Think gate styling
-│   └── options.css          Rule Book dark parchment UI styling
-├── scripts/
-│   ├── background.js        Service worker (seeds storage, DNR compilation, alarms, pause sessions)
-│   ├── rules-engine.js      Shared matching + regex-compiler logic
-│   ├── content-youtube.js   Content script catching YouTube search form
-│   ├── blocked.js           Blocked page interactions & tab closer
-│   ├── pause.js             Pause & Think gate timer & confirmation
-│   └── options.js           Rule Book UI controller (add/edit/pause/lock/import/export)
-├── icons/                   Toolbar & extension icons
-├── context/                 Architecture, UI tokens & progress notes for contributors/AI agents
-├── AGENTS.md                Instructions for AI coding agents
-├── .gitignore
-└── README.md
+manifest.json            MV3 manifest
+pages/                   blocked.html (Hell), pause.html (crossroads), options.html (Rule Book), popup.html
+scripts/background.js    service worker: DNR rules, timers, passes, re-gating, stats
+scripts/rules-engine.js  pure matching, schedules, URL explanations, lint, DNR regex compiler
+scripts/shared.js        pure settings, timers, stats and JSONC helpers
+scripts/*.js             page controllers, reminder packs, Heaven transition
+styles/                  one stylesheet per page plus heaven.css
+tests/                   node --test unit tests
+context/                 architecture, UI tokens and progress notes
 ```
 
-Everything after install lives in `chrome.storage.local` — the `.jsonc` file
-is not read again unless you use **Import** on the options page.
+Check your changes:
 
-## How it works, in short
+```bash
+for f in scripts/*.js; do node --check "$f"; done
+node --test tests/*.test.js
+```
 
-- **Blocking**: `declarativeNetRequest` matches your BLOCKED rules (compiled
-  to regex under the hood — you never touch regex) and redirects the
-  top-level page to `pages/blocked.html` carrying rule identifiers. EXCLUDED
-  rules are compiled as higher-priority `allow` rules, so they always win.
-- **Custom Site Messages**: When a blocked site opens `blocked.html`, it checks
-  if a custom message was configured for that rule in the Rule Book. If present,
-  it displays the custom message; otherwise, it displays an Islamic reminder.
-- **Incognito Isolation**: Configured with `"incognito": "split"` so blocked
-  pages and the Rule Book open seamlessly in private browsing windows without
-  being blocked by Chrome client security policies.
-- **Blocked page**: shows a message, no "proceed anyway" — one button,
-  **Close Tab**, which shows a brief toast and closes the tab.
-- **Pausing a BLOCKED rule**: type a reason → 30-minute cooling-off → type a
-  reason again → paused. While paused, the rule is inactive and stops blocking.
-  Click **Resume** anytime to re-enable blocking immediately.
-- **Deleting a BLOCKED rule**: click **Delete** → deleted instantly without delay.
-- **Locked rules**: hard-locked rules cannot be paused, edited, or deleted until
-  their lock expires (Mon–Thu lock → unlocks Friday 6 PM, stays locked
-  through the weekend; Fri/Sat/Sun lock → flat 24 hours).
-- **EXCLUDED rules**: freely, instantly editable & removable — no friction.
-- **PAUSE_AND_THINK rules**: redirect to `pages/pause.html`, a 15-second
-  reflection, then typing `Yes I Am Sure` (exact) lets you through. Access
-  lasts while a matching tab stays active and ends 5 minutes after you leave.
-- **Google search rules**: a substring on `google.*/search` is matched against
-  the search text only, not Google's tracking parameters.
-- **YouTube search**: a content script catches the search form before submit,
-  jumping straight to the blocked page without flashing the results page.
+Then reload the extension in `chrome://extensions` to try it out. See [`context/ARCHITECTURE.md`](context/ARCHITECTURE.md) for how it fits together.
+
+## Contributing
+
+Issues and pull requests are welcome. Please keep the no-bypass design intact: no "proceed anyway", and locked rules stay locked.
+
+## License
+
+[MIT](LICENSE) © 2026 Abdul Khan
