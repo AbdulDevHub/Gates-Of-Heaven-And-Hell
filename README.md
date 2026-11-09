@@ -40,7 +40,7 @@ Everything lives in Chrome's local storage on your machine. No accounts, no serv
 - 🧭 **Toolbar popup**: this page's status, "Block" or "Pause & Think" for the whole site or just part of it (one YouTube channel, one subreddit), live pass timers with **End pass**.
 - 📈 **Journey dashboard**: per-rule streaks in a sortable table, a year calendar, a weekday × hour heatmap of when gates hit, the Pause & Think funnel, time spent on passes and week-over-week change. Today's slips stay hidden so one slip doesn't snowball. Clear the last hour, today or all time when you need a fresh start.
 - ⏱️ **Per-site timings**: any rule can have its own wait, pass length or (for Blocked rules) pause cooldown.
-- 🔍 **Search engine aware**: Google search rules match only your search text, not Google's tracking parameters. YouTube searches are caught before the results page flashes.
+- 🔍 **Search engine aware**: Google search rules match only your search text, not Google's tracking parameters, and only at the start of a word (so a short word can't fire inside "object"). YouTube searches are caught before the results page flashes.
 - 🧩 **Single-page apps covered**: in-app navigation (Reddit, YouTube, X) is gated too, not just full page loads.
 - 🔊 **Gate sounds**: the portcullis slams, the iron gate grinds open, Heaven sings when you walk away. Synthesized in the browser (no audio files) and can be turned off in Settings.
 - 🌍 **Universal or faith-based reminders**: reflective lines for anyone by default, or Islamic reminders if you prefer.
@@ -155,8 +155,7 @@ context/                 architecture, UI tokens and progress notes
 Check your changes:
 
 ```bash
-for f in scripts/*.js; do node --check "$f"; done
-node --test tests/*.test.js
+node --test   # unit tests + syntax check of every script
 ```
 
 Then reload the extension in `chrome://extensions` to try it out. See [`context/ARCHITECTURE.md`](context/ARCHITECTURE.md) for how it fits together.

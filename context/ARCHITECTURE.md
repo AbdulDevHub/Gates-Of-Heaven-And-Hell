@@ -45,7 +45,7 @@ declarativeNetRequest dynamic rules (live rules only: not paused, schedule on)
 
 ### Rules engine — `scripts/rules-engine.js` (pure)
 - `splitDomain` / `normalizeDomain`: host (exact or parent) + optional path prefix; `*` = any host.
-- `ruleMatches` (JS) and `buildRegexFilter` (RE2 for DNR) implement the same matching. Google search substrings only look at `q=`.
+- `ruleMatches` (JS) and `buildRegexFilter` (RE2 for DNR) implement the same matching. Google search substrings only look at `q=` and must start a word there (prefix match: `je` ≠ "object", `bat` = "batman").
 - `explainUrl(url, state, now)` → verdict (`excluded | pass | pause | blocked | none`), rule, reason and near-miss notes. Used by the tester, popup, YouTube script and re-gating.
 - Schedules (`isScheduleActive`, `nextScheduleBoundary`, `describeSchedule`), `isRuleLive`, `lintRule`, `buildGatePath` / `readTargetUrl`.
 

@@ -21,7 +21,16 @@ const CASES = [
   ['https://reddit.com', 'reddit.com', '', true],
   ['https://notreddit.com/', 'reddit.com', '', false],
   ['https://www.google.com/search?q=java+tips&sxsrf=abc', 'google.com/search', 'java', true],
-  ['https://www.google.com/search?q=cats&ved=porn', 'google.com/search', 'porn', false],
+  ['https://www.google.com/search?q=cats&ved=bat', 'google.com/search', 'bat', false],
+  ['https://www.google.com/search?q=Get-ChildItem+%7C+Where-Object+%7B', 'google.com/search', 'je', false],
+  ['https://www.google.com/search?q=je+tips', 'google.com/search', 'je', true],
+  ['https://www.google.com/search?q=what+is+je', 'google.com/search', 'je', true],
+  ['https://www.google.com/search?q=%22je%22+meaning', 'google.com/search', 'je', true],
+  ['https://www.google.com/search?q=new-je+x', 'google.com/search', 'je', true],
+  ['https://www.google.com/search?q=batman', 'google.com/search', 'bat', true],
+  ['https://www.google.com/search?q=objects', 'google.com/search', 'je', false],
+  ['https://www.google.com/search?q=best+big+mac', 'google.com/search', 'big mac', true],
+  ['https://www.google.com/search?q=abig+mac', 'google.com/search', 'big mac', false],
   ['https://www.google.com/searchbyimage', 'google.com/search', '', true],
   ['https://www.google.com/maps', 'google.com/search', '', false],
   ['https://www.youtube.com/results?search_query=lofi+music', 'youtube.com/results', 'lofi music', true],
@@ -185,14 +194,14 @@ test('v1 positional rule files import with every new field defaulted', () => {
 
 test('JSONC round trip keeps old array format and new fields', () => {
   const text = `// comment
-  { "BLOCKED": [["google.com/search", "porn", "msg"],],
+  { "BLOCKED": [["google.com/search", "bat", "msg"],],
     "PAUSE_AND_THINK": [["reddit.com", ""], {"domain": "x.com", "note": "Doomscroll", "passMode": "fixed", "passMinutes": 10}],
     "EXCLUDED": [["youtube.com/results", "recipe"]] }`;
   const book = S.parseRuleBook(text);
   assert.equal(book.blocked[0].message, 'msg');
   assert.equal(book.pauseAndThink[1].note, 'Doomscroll');
   const out = S.parseJsonc(S.serializeRuleBook(book, null, 0));
-  assert.deepEqual(out.BLOCKED[0], ['google.com/search', 'porn', 'msg']);
+  assert.deepEqual(out.BLOCKED[0], ['google.com/search', 'bat', 'msg']);
   assert.deepEqual(out.PAUSE_AND_THINK[0], ['reddit.com', '']);
   assert.equal(out.PAUSE_AND_THINK[1].passMinutes, 10);
 });

@@ -27,6 +27,9 @@ v2.1.0, loaded unpacked (not on the Chrome Web Store). All features below workin
 
 ## Session log
 
+### 2026-11-09
+- Fix: Google search words now have to start a word in the query (`je` no longer gates "Where-Object"; `bat` still catches "batman"). `searchTextHas` in the engine, matching word-start prefix in `buildRegexFilter`, tests added.
+
 ### 2026-11-08 (v2.1 polish)
 - Journey: tiles and charts share one gap; clear-stats buttons (last hour / today / all time, click twice) fill the header's empty right side. Undo log `stats.log` + `SH.clearStats` + `CLEAR_STATS`.
 - Gate SFX (`scripts/sfx.js`, Web Audio, Settings toggle). Removed the visible countdown from the crossroads (ring + opening). Removed popup stat cards. README features and social preview (Space Grotesk, no serif) refreshed.
@@ -46,7 +49,7 @@ v2.1.0, loaded unpacked (not on the Chrome Web Store). All features below workin
 ### 2026-11-04
 - Moved agent docs out of `.agents/`: `AGENTS.md` at root, `ARCHITECTURE.md` and this tracker in `context/`, added `context/UI_TOKENS.md`.
 - Pause sessions tracked with `lastActiveAt` + 1-minute heartbeat; DNR rebuilds serialized; confirmation phrase case-sensitive.
-- Google search rules match the substring against the `q=` text only.
+- Google search rules match the substring against the `q=` text only, and it must start a word there.
 
 ### Earlier history
 Initial MV3 rebuild of the original Tampermonkey blocker on `declarativeNetRequest`, then icons, inline editing and domain grouping, folder restructure with split incognito and custom blocked messages, the Pause-vs-Delete refactor (reflection + 30-min cooldown), and the Pause & Think soft-gate tier.

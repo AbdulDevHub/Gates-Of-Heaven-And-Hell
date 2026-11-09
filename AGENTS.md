@@ -15,7 +15,8 @@ Manifest V3 Chrome extension (v2.1.0) that blocks sites with `declarativeNetRequ
 ## Run & verify
 - Load unpacked: `chrome://extensions` → Developer mode → Load unpacked → repo root. Reload the extension after edits.
 - Seed rules: `bookOfLinks.jsonc` (gitignored, personal) is read once on first install; afterwards use Import in the Rule Book.
-- Verify: `for f in scripts/*.js; do node --check "$f"; done && node --test tests/*.test.js`
+- Verify: `node --test`
+- That finds `tests/*.test.js`; `tests/syntax.test.js` runs `node --check` on every script. Keep Verify shell-neutral (the stop hook runs it via cmd.exe).
 - Browser behaviour can be driven with Playwright's bundled Chromium and `--load-extension` (branded Chrome ignores that flag).
 
 ## Conventions & constraints
@@ -24,7 +25,7 @@ Manifest V3 Chrome extension (v2.1.0) that blocks sites with `declarativeNetRequ
 - DNR priorities: EXCLUDED 4 (allow) > open passes 3 (allow) > PAUSE_AND_THINK 2 (redirect `pause.html`) > BLOCKED 1 (redirect `blocked.html`). Paused and off-schedule rules are left out.
 - `scripts/rules-engine.js` and `scripts/shared.js` stay pure (no `chrome.*`): they're shared by the worker, content script, pages and Node tests. Regexes must be RE2-compatible (no lookarounds/backreferences).
 - Domain matching is exact host or parent domain plus optional path prefix (`x.com` ≠ `dropbox.com`); `*` = any site. Keep `ruleMatches` and `buildRegexFilter` in agreement (the tests check both).
-- Google search rules (`google.*/search`) match the substring against the `q=` text only.
+- Google search rules (`google.*/search`) match the substring against the `q=` text only, and it must start a word (`je` doesn't match "object").
 - Gate URLs carry the original URL as the LAST param; read it with `RulesEngine.readTargetUrl`, never `URLSearchParams` (it truncates at `&`).
 - Keep stored schemas backwards-compatible (see `context/ARCHITECTURE.md`); re-test JSONC import/export when changing rule shapes.
 - New pages/scripts loaded from a redirect must be listed in `web_accessible_resources`.

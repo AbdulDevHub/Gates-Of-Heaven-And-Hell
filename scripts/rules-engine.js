@@ -68,6 +68,18 @@
     try { return decodeURIComponent(spaced).toLowerCase(); } catch { return spaced.toLowerCase(); }
   }
 
+  // A search word must start a word in the query ("je" doesn't match
+  // "object"), but may run on ("bat" still matches "batman"). A word that
+  // itself starts with punctuation can sit anywhere.
+  const WORD_CHAR = /[a-z0-9]/;
+  function searchTextHas(text, sub) {
+    const needStart = WORD_CHAR.test(sub[0]);
+    for (let i = text.indexOf(sub); i >= 0; i = text.indexOf(sub, i + 1)) {
+      if (!needStart || i === 0 || !WORD_CHAR.test(text[i - 1])) return true;
+    }
+    return false;
+  }
+
   function hostMatches(urlHost, ruleHost) {
     if (!ruleHost) return false;
     if (ruleHost === '*') return true;
@@ -89,7 +101,7 @@
 
     if (isSearchRule(domain)) {
       const m = urlParts.rest.match(/[?&]q=([^&#]*)/);
-      return m ? decodeQueryValue(m[1]).includes(sub) : false;
+      return m ? searchTextHas(decodeQueryValue(m[1]), sub) : false;
     }
     if (urlParts.rest.includes(sub)) return true;
     const spaced = urlParts.rest.replace(/\+|%20/g, ' ');
@@ -360,7 +372,10 @@
 
     const sp = escapeRegex(s).replace(/ /g, '(?:\\+|%20| )');
     if (path) {
-      const body = isSearchRule(domain) ? `.*[?&]q=[^&#]*${sp}.*` : `.*${sp}.*`;
+      // Search rules: the word starts the q= text or follows a non-word
+      // character (raw like + or -, or percent-encoded like %22).
+      const wordStart = /^[a-z0-9]/.test(s) ? '(?:[^&#]*(?:[^a-z0-9&#%]|%[0-9a-f]{2}))?' : '[^&#]*';
+      const body = isSearchRule(domain) ? `.*[?&]q=${wordStart}${sp}.*` : `.*${sp}.*`;
       return `${prefix}${escapeRegex(path)}${body})$`;
     }
     // No path: the URL must leave the host at a / ? or # and the substring
